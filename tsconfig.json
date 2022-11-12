@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "resolveJsonModule": true,
+        "module": "commonjs",
+        "esModuleInterop": true,
+        "target": "ES2020",
+        "noImplicitAny": false,
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "outDir": "./dist",
+        "skipLibCheck": true,
+        "declaration": true
+        // "strict": true
+    },
+    "include": ["src"],
+    "exclude": ["node_modules"]
+}
