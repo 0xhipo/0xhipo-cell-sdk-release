@@ -85,6 +85,8 @@ export class NearBot {
         switch (params.protocol) {
             case Protocol.Tonic:
                 return TonicBot.getBotInfo(params);
+            case Protocol.Ref:
+                return RefBot.getBotInfo(params);
             default:
                 throw `Get near bot info error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }

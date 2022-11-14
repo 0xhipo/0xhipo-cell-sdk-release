@@ -1,9 +1,16 @@
 import Decimal from 'decimal.js';
 import { Action, functionCall, signTransaction } from 'near-api-js/lib/transaction';
-import { NearAccountState, NearEnvConfig, NearNetworkId, NearTokenConfig, NearTransactionPayload } from '../type';
-import { DEFAULT_GAS, ZERO_BN } from '../constant';
-import { nativeToUi, uiToNative } from './number.util';
-import { getNearEnvConfig, getNearTokenConfigBySymbol } from './constant.util';
+import {
+    NearAccountState,
+    NearEnvConfig,
+    NearNetworkId,
+    NearTokenConfig,
+    NearTransactionPayload,
+    RefPoolConfig,
+} from '../type';
+import { DEFAULT_GAS, REF_CONTRACT_ID, ZERO_BN } from '../constant';
+import { nativeToUi, refPointToPrice, uiToNative } from './number.util';
+import { getNearEnvConfig, getNearTokenConfigBySymbol, getRefPoolConfig } from './constant.util';
 import { FinalExecutionOutcome, JsonRpcProvider } from 'near-api-js/lib/providers';
 import { KeyPair, keyStores, Near } from 'near-api-js';
 import BN from 'bn.js';
@@ -33,14 +40,18 @@ export function redeemFromTonicAction(tokenSymbol: string, amount: Decimal): Act
     }
 }
 
-export async function getNearTokenBalance(tokenSymbol: string, accountId: string): Promise<Decimal> {
+export async function getNearTokenBalance(
+    tokenSymbol: string,
+    accountId: string,
+    networkId = NearNetworkId.mainnet,
+): Promise<Decimal> {
     const tokenConfig = getNearTokenConfigBySymbol(tokenSymbol) as NearTokenConfig;
     if (tokenConfig.symbol == 'NEAR') {
-        const accountState = await nearViewAccount(accountId);
+        const accountState = await nearViewAccount(accountId, networkId);
         return nativeToUi(new Decimal(accountState.amount), tokenConfig.decimals);
     } else {
-        return nearViewFunction('ft_balance_of', { account_id: accountId }, tokenConfig.accountId).then((res) =>
-            nativeToUi(new Decimal(res), tokenConfig.decimals),
+        return nearViewFunction('ft_balance_of', { account_id: accountId }, tokenConfig.accountId, networkId).then(
+            (res) => nativeToUi(new Decimal(res), tokenConfig.decimals),
         );
     }
 }
@@ -111,4 +122,16 @@ export async function nearViewAccount(
             request_type: 'view_account',
         })
         .then((res) => res as NearAccountState);
+}
+
+/*
+ * Token X / Token Y
+ * e.g. REF | USDT pool, get REF price quoted by USDT
+ */
+export async function getRefPoolPrice(poolId: string, networkId = NearNetworkId.testnet) {
+    const poolConfig = getRefPoolConfig(poolId) as RefPoolConfig;
+    const tokenXConfig = getNearTokenConfigBySymbol(poolConfig.tokenXSymbol) as NearTokenConfig;
+    const tokenYConfig = getNearTokenConfigBySymbol(poolConfig.tokenYSymbol) as NearTokenConfig;
+    const poolInfo = await nearViewFunction('get_pool', { pool_id: poolId }, REF_CONTRACT_ID, networkId);
+    return refPointToPrice(new Decimal(poolInfo['current_point']), tokenYConfig.decimals, tokenXConfig.decimals);
 }

@@ -1,8 +1,8 @@
-import { NearBot } from '../../../src/Bot/near';
-import { NEAR_CONTRACT_ID } from '../../../src/constant/near';
+import { NearBot, NearNetworkId } from '../../../src';
+import { nearContractId } from '../../constant.example';
 
 async function loadAllExample() {
-    const bots = await NearBot.loadAll(NEAR_CONTRACT_ID.PROD);
+    const bots = await NearBot.loadAll(nearContractId, NearNetworkId.testnet);
     console.log(bots);
 }
 loadAllExample();

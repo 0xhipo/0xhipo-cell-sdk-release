@@ -1,6 +1,8 @@
 import {
+    BotInfo,
     CancelNearOrderParams,
     CreateNearBotParams,
+    GetNearBotInfoParams,
     GetNearOpenOrdersParams,
     NearTokenConfig,
     NearTransactionPayload,
@@ -14,6 +16,8 @@ import {
     botProtocolEnumToStr,
     botTypeEnumToStr,
     decimalToBN,
+    getMarketPrice,
+    getNearTokenBalance,
     getNearTokenConfigBySymbol,
     getRefPoolConfig,
     nativeToUi,
@@ -162,6 +166,24 @@ export class RefBot {
         return [botIndex, payloads];
     }
 
+    static async getBotInfo(params: GetNearBotInfoParams): Promise<BotInfo> {
+        const poolConfig = getRefPoolConfig(params.market) as RefPoolConfig;
+        const baseTokenConfig = getNearTokenConfigBySymbol(poolConfig.tokenXSymbol) as NearTokenConfig;
+        const quoteTokenConfig = getNearTokenConfigBySymbol(poolConfig.tokenYSymbol) as NearTokenConfig;
+        const botContractId = `${params.botIndex}.${params.contractId}`;
+
+        const [baseBalance, quoteBalance, baseMarketPrice, quoteMarketPrice] = await Promise.all([
+            getNearTokenBalance(baseTokenConfig.symbol, botContractId, params.networkId),
+            getNearTokenBalance(quoteTokenConfig.symbol, botContractId, params.networkId),
+            getMarketPrice(baseTokenConfig.symbol),
+            getMarketPrice(quoteTokenConfig.symbol),
+        ]);
+        return {
+            value: baseBalance.mul(baseMarketPrice).add(quoteBalance.mul(quoteMarketPrice)),
+            position: baseBalance,
+        };
+    }
+
     static async getOpenOrders(params: GetNearOpenOrdersParams): Promise<OpenOrder[]> {
         const poolConfig = getRefPoolConfig(params.market) as RefPoolConfig;
         const tokenXSymbol = poolConfig.tokenXSymbol == 'NEAR' ? 'wNEAR.Testnet' : poolConfig.tokenXSymbol;
@@ -189,7 +211,7 @@ export class RefBot {
             );
             openOrders.push({
                 price,
-                size,
+                size: side == OrderSide.Bid ? size.div(price) : size,
                 side,
                 orderId: i['order_id'],
                 clientId: null,

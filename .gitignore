@@ -1,0 +1,6 @@
+.idea/*
+.codel/*
+.vscode/
+
+/node_modules/
+/dist/

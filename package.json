@@ -1,6 +1,6 @@
 {
-    "name": "cellprotocol-sdk",
-    "version": "2.3.1",
+    "name": "0xhipo-cell-sdk-release",
+    "version": "2.3.3",
     "description": "",
     "main": "index.js",
     "scripts": {
@@ -17,9 +17,9 @@
     "keywords": [],
     "author": "",
     "license": "ISC",
-    "homepage": "https://github.com/0xhipo/cellprotocol-sdk",
+    "homepage": "https://github.com/0xhipo/0xhipo-cell-sdk-release",
     "bugs": {
-        "url": "https://github.com/0xhipo/cellprotocol-sdk/issues"
+        "url": "https://github.com/0xhipo/0xhipo-cell-sdk-release/issues"
     },
     "dependencies": {
         "@blockworks-foundation/mango-client": "^3.6.11",

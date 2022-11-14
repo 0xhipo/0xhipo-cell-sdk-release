@@ -6,3 +6,4 @@ export * from './type';
 export * from './Pool';
 export * from './constant';
 export * from './util';
+export * from './Stragety';

@@ -214,6 +214,7 @@ export interface GetNearBotInfoParams {
     market: string;
     botIndex: number;
     contractId: string;
+    networkId: NearNetworkId;
 }
 
 export interface CancelNearOrderParams {
@@ -225,7 +226,7 @@ export interface CancelNearOrderParams {
     // REF
     amount?: Decimal;
     // REF
-    side?: OrderSide
+    side?: OrderSide;
 }
 
 export interface GetNearOpenOrdersParams {

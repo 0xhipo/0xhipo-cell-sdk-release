@@ -6,15 +6,23 @@ import {
     Transaction,
     TransactionInstruction,
 } from '@solana/web3.js';
-import { CellCacheAccount, CellCacheAccountLayout, ZetaMarginAccount, zetaMarginAccountLayout } from '../layout';
+import {
+    CellCacheAccount,
+    CellCacheAccountLayout,
+    ZetaGroupAccount,
+    zetaGroupAccountLayout,
+    ZetaMarginAccount,
+    zetaMarginAccountLayout,
+} from '../layout';
 import Decimal from 'decimal.js';
 import { SOLANA_TOKEN, ZERO_DECIMAL, ZETA_DEX_PROGRAM_ID, ZETA_PROGRAM_ID } from '../constant';
-import { SerumOpenOrdersAccountInfo, TransactionPayload } from '../type';
+import { SerumOpenOrdersAccountInfo, TransactionPayload, ZetaAssetConfig, ZetaExpirySeries } from '../type';
 import { _OPEN_ORDERS_LAYOUT_V2 } from '@project-serum/serum/lib/market';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import crypto from 'crypto';
 import { createATAIx } from '../instruction';
 import { bnToDecimal, nativeToUi } from './number.util';
+import { getZetaAssetConfigBySymbol } from './constant.util';
 
 export async function getZetaMarginAccount(
     connection: Connection,
@@ -188,4 +196,24 @@ export async function sendSolanaPayload(
 
     console.log(`Signature: ${signature}`);
     return signature;
+}
+
+export async function getZetaGroup(connection: Connection, baseSymbol: string): Promise<ZetaGroupAccount> {
+    const assetConfig = getZetaAssetConfigBySymbol(baseSymbol) as ZetaAssetConfig;
+    const zetaGroupAccount = await connection.getAccountInfo(assetConfig.groupAccount);
+    if (!zetaGroupAccount) {
+        throw `Get Zeta group error: account not existed ${assetConfig.groupAccount}`;
+    }
+    return zetaGroupAccountLayout('').decode(zetaGroupAccount.data, 0);
+}
+
+// return timestamp in ms
+export async function getZetaExpirySeries(connection: Connection, baseSymbol: string): Promise<ZetaExpirySeries[]> {
+    const zetaGroup = await getZetaGroup(connection, baseSymbol);
+    return zetaGroup.expirySeries.map((i) => {
+        return {
+            activeTs: i['activeTs'].muln(1000).toNumber(),
+            expiryTs: i['expiryTs'].muln(1000).toNumber(),
+        };
+    });
 }

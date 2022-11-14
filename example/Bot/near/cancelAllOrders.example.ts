@@ -1,7 +1,5 @@
-import { NearBot } from '../../../src/Bot/near';
+import { NearBot, nearSendTransactionPayload, CancelAllNearOrdersParams } from '../../../src';
 import { nearAccountId, nearAccountPrivateKey, nearBotIndex, nearContractId } from '../../constant.example';
-import { CancelAllNearOrdersParams } from '../../../src';
-import { nearSendTransactionPayload } from '../../../src/util';
 
 async function cancelOrderExample() {
     const bot = await NearBot.load(nearBotIndex, nearContractId);
