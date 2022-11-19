@@ -6,6 +6,7 @@ import {
     ModifyPoolOrderParams,
     PoolInfo,
     RedeemPoolParams,
+    SolanaTokenConfig,
     TransactionPayload,
     ZetaAssetConfig,
     ZetaFutureMarketConfig,
@@ -23,6 +24,7 @@ import {
     getBotZetaOpenOrdersAccountKey,
     getCellCacheKey,
     getCellConfigAccountKey,
+    getTokenConfigBySymbol,
     getZetaAssetConfigBySymbol,
     getZetaFutureMarketConfig,
     getZetaOpenOrdersMapKey,
@@ -32,7 +34,6 @@ import {
     zetaOrderSideTransform,
     zetaOrderTypeTransform,
 } from '../../util';
-import { ADMIN_ACCOUNT, SOLANA_TOKEN } from '../../constant';
 import {
     cancelZetaOrderIx,
     createATAIx,
@@ -55,13 +56,14 @@ export class ZetaFuturePool {
         const [botSeed, botKey, botMintKey] = await genValidBotAccount(params.programId);
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
 
         const cellConfigKey = await getCellConfigAccountKey(params.programId);
         const cellCacheKey = await getCellCacheKey(botKey, params.botOwner, params.programId);
 
-        const ownerUSDCATA = await getATAKey(params.botOwner, SOLANA_TOKEN.USDC.mintKey);
+        const ownerUSDCATA = await getATAKey(params.botOwner, usdcConfig.mintKey);
         const ownerBotMintATA = await getATAKey(params.botOwner, botMintKey);
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
 
         const dexAccountKey = await getBotZetaMarginAccountKeyBySeed(
             botSeed,
@@ -76,7 +78,7 @@ export class ZetaFuturePool {
                 createATAIx({
                     ataKey: botUSDCATA,
                     ownerKey: botKey,
-                    mintKey: SOLANA_TOKEN.USDC.mintKey,
+                    mintKey: usdcConfig.mintKey,
                     payerKey: params.botOwner,
                 }),
                 createBotIx({
@@ -92,7 +94,7 @@ export class ZetaFuturePool {
                     botAssetKey: botUSDCATA,
                     userAssetKey: ownerUSDCATA,
                     userBotTokenKey: ownerBotMintATA,
-                    assetPriceKey: SOLANA_TOKEN.USDC.pythPriceKey,
+                    assetPriceKey: usdcConfig.pythPriceKey,
                     userKey: params.botOwner,
                     protocol: params.protocol,
                     botType: params.botType,
@@ -152,12 +154,13 @@ export class ZetaFuturePool {
 
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
 
         const botKey = await getBotKeyBySeed(params.botSeed, params.programId);
         const botMintKey = await getBotMintKeyBySeed2(params.botSeed, params.programId);
         const cellCacheKey = await getCellCacheKey(botKey, params.investor, params.programId);
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
-        const investorUSDCATA = await getATAKey(params.investor, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
+        const investorUSDCATA = await getATAKey(params.investor, usdcConfig.mintKey);
         const [investorBotMintATA, createInvestorBotMintATAIx] = await createATA(
             params.connection,
             params.investor,
@@ -188,7 +191,7 @@ export class ZetaFuturePool {
                 zetaMarginAccount: zetaMarginAccountKey,
                 zetaGreeksAccount: assetConfig.greeksAccount,
                 zetaGroupAccount: assetConfig.groupAccount,
-                pythPriceAccount: SOLANA_TOKEN.USDC.pythPriceKey,
+                pythPriceAccount: usdcConfig.pythPriceKey,
                 programId: params.programId,
             }),
         );
@@ -199,6 +202,7 @@ export class ZetaFuturePool {
     static async redeem(params: RedeemPoolParams): Promise<TransactionPayload> {
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
 
         const botKey = await getBotKeyBySeed(params.botSeed, params.programId);
         const botMintKey = await getBotMintKeyBySeed2(params.botSeed, params.programId);
@@ -207,10 +211,10 @@ export class ZetaFuturePool {
         const cellCacheKey = await getCellCacheKey(botKey, params.investor, params.programId);
         const cellConfigAccount = await getCellConfigAccountKey(params.programId);
 
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
-        const investorUSDCATA = await getATAKey(params.investor, SOLANA_TOKEN.USDC.mintKey);
-        const botOwnerUSDCATA = await getATAKey(params.botOwner, SOLANA_TOKEN.USDC.mintKey);
-        const cellUSDCATA = await getATAKey(ADMIN_ACCOUNT, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
+        const investorUSDCATA = await getATAKey(params.investor, usdcConfig.mintKey);
+        const botOwnerUSDCATA = await getATAKey(params.botOwner, usdcConfig.mintKey);
+        const cellUSDCATA = await getATAKey(params.cellAdmin, usdcConfig.mintKey);
 
         const zetaMarginAccountKey = await getBotZetaMarginAccountKeyBySeed(
             params.botSeed,
@@ -236,7 +240,7 @@ export class ZetaFuturePool {
                     zetaMarginAccount: zetaMarginAccountKey,
                     zetaGreeksAccount: assetConfig.greeksAccount,
                     zetaGroupAccount: assetConfig.groupAccount,
-                    pythPriceAccount: SOLANA_TOKEN.USDC.pythPriceKey,
+                    pythPriceAccount: usdcConfig.pythPriceKey,
                     botOwnerAssetAccount: botOwnerUSDCATA,
                     programId: params.programId,
                 }),
@@ -247,10 +251,11 @@ export class ZetaFuturePool {
     static async adjustReserve(params: AdjustPoolReserveParams): Promise<TransactionPayload> {
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
 
         const cellConfigAccount = await getCellConfigAccountKey(params.programId);
         const botKey = await getBotKeyBySeed(params.botSeed, params.programId);
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
         const zetaMarginAccountKey = await getBotZetaMarginAccountKeyBySeed(
             params.botSeed,
             assetConfig.groupAccount,
@@ -271,7 +276,7 @@ export class ZetaFuturePool {
                     zetaSocializedLossAccount: assetConfig.socializedLossAccount,
                     userOrBotDelegateAccount: params.payer,
                     cellConfigAccount,
-                    pythPriceAccount: SOLANA_TOKEN.USDC.pythPriceKey,
+                    pythPriceAccount: usdcConfig.pythPriceKey,
                     programId: params.programId,
                 }),
             ],
@@ -279,8 +284,10 @@ export class ZetaFuturePool {
     }
 
     static async getPoolInfo(params: GetPoolInfoParams): Promise<PoolInfo> {
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
+
         const botKey = await getBotKeyBySeed(params.botSeed, params.programId);
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
         const botUSDCBalance = await getATABalance(params.connection, botUSDCATA);
 
         const botInfo = await ZetaFutureBot.getBotInfo({

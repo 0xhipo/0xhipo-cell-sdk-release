@@ -9,24 +9,22 @@ import {
     OrderSide,
     PlaceOrderParams,
     StopBotParams,
-    TokenConfig,
+    SolanaTokenConfig,
     TransactionPayload,
     ZetaAssetConfig,
     ZetaFutureMarketConfig,
     ZetaOrderSide,
 } from '../../type';
 import {
-    createATA,
     genValidBotAccount,
     getATABalance,
     getATAKey,
     getBotKeyBySeed,
-    getBotMintKeyBySeed2,
     getBotZetaMarginAccountKeyBySeed,
     getBotZetaOpenOrdersAccountKey,
     getCellCacheKey,
     getCellConfigAccountKey,
-    getPythPrice,
+    getMarketPrice,
     getSerumOpenOrdersAccountInfo,
     getTokenConfigBySymbol,
     getZetaAssetConfigBySymbol,
@@ -35,12 +33,13 @@ import {
     getZetaOpenOrdersMapKey,
     nativeToUi,
     Numberu128,
+    redeemAllFromBot,
     uiToNative,
     uiZetaPriceToNative,
     zetaOrderSideTransform,
     zetaOrderTypeTransform,
 } from '../../util';
-import { ADMIN_ACCOUNT, SOLANA_TOKEN, ZERO_DECIMAL, ZETA_DEX_PROGRAM_ID } from '../../constant';
+import { ZERO_DECIMAL, ZETA_DEX_PROGRAM_ID } from '../../constant';
 import {
     cancelZetaOrderIx,
     closeZetaOpenOrdersIx,
@@ -50,7 +49,6 @@ import {
     initZetaMarginAccountIx,
     initZetaOpenOrdersIx,
     placeZetaOrderIx,
-    redeemAllAssetsFromBotIx,
     settleZetaMarketIx,
     stopBotIx,
     withdrawFromZetaIx,
@@ -67,13 +65,14 @@ export class ZetaFutureBot {
         const [botSeed, botKey, botMintKey] = await genValidBotAccount(params.programId);
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
 
         const cellConfigKey = await getCellConfigAccountKey(params.programId);
         const cellCacheKey = await getCellCacheKey(botKey, params.botOwner, params.programId);
 
-        const ownerUSDCATA = await getATAKey(params.botOwner, SOLANA_TOKEN.USDC.mintKey);
+        const ownerUSDCATA = await getATAKey(params.botOwner, usdcConfig.mintKey);
         const ownerBotMintATA = await getATAKey(params.botOwner, botMintKey);
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
 
         const dexAccountKey = await getBotZetaMarginAccountKeyBySeed(
             botSeed,
@@ -88,7 +87,7 @@ export class ZetaFutureBot {
                 createATAIx({
                     ataKey: botUSDCATA,
                     ownerKey: botKey,
-                    mintKey: SOLANA_TOKEN.USDC.mintKey,
+                    mintKey: usdcConfig.mintKey,
                     payerKey: params.botOwner,
                 }),
                 createBotIx({
@@ -104,7 +103,7 @@ export class ZetaFutureBot {
                     botAssetKey: botUSDCATA,
                     userAssetKey: ownerUSDCATA,
                     userBotTokenKey: ownerBotMintATA,
-                    assetPriceKey: SOLANA_TOKEN.USDC.pythPriceKey,
+                    assetPriceKey: usdcConfig.pythPriceKey,
                     userKey: params.botOwner,
                     protocol: params.protocol,
                     botType: params.botType,
@@ -161,7 +160,7 @@ export class ZetaFutureBot {
 
     static async stop(params: StopBotParams): Promise<TransactionPayload> {
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
-        const tokenConfig = getTokenConfigBySymbol(marketConfig.baseSymbol) as TokenConfig;
+        const tokenConfig = getTokenConfigBySymbol(marketConfig.baseSymbol) as SolanaTokenConfig;
 
         const botKey = await getBotKeyBySeed(params.botSeed, params.programId);
         const cellConfigAccount = await getCellConfigAccountKey(params.programId);
@@ -216,7 +215,7 @@ export class ZetaFutureBot {
     static async getBotInfo(params: GetBotInfoParams): Promise<BotInfo> {
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
-        const tokenConfig = getTokenConfigBySymbol(marketConfig.baseSymbol) as TokenConfig;
+        const tokenConfig = getTokenConfigBySymbol(marketConfig.baseSymbol) as SolanaTokenConfig;
 
         const zetaMarginAccountKey = await getBotZetaMarginAccountKeyBySeed(
             params.botSeed,
@@ -235,9 +234,7 @@ export class ZetaFutureBot {
         );
         const balance = nativeToUi(new Decimal(zetaMarginAccount.balance.toString()), 6);
 
-        const marketPrice = await getPythPrice(params.connection, tokenConfig.pythPriceKey)
-            .then((res) => res as number)
-            .then((res) => new Decimal(res));
+        const marketPrice = await getMarketPrice(tokenConfig.name);
 
         let unrealizedPnl = ZERO_DECIMAL;
         if (position.gt(ZERO_DECIMAL)) {
@@ -345,12 +342,12 @@ export class ZetaFutureBot {
 
     /*
      * Requirement: 1. Zero position; 2. No open orders
-     * 1. Close open orders account if existed
+     * 1. Close open orders account
      * 2. Redeem all USDC from Zeta
      * 3. Redeem all USDC from bot
      */
-    static async close(params: CloseBotParams) {
-        const payloads: TransactionPayload[] = [];
+    static async close(params: CloseBotParams): Promise<(TransactionPayload | undefined)[]> {
+        const payloads: (TransactionPayload | undefined)[] = [];
 
         const openOrders = await this.getOpenOrders({
             protocol: params.protocol,
@@ -377,10 +374,11 @@ export class ZetaFutureBot {
 
         const marketConfig = getZetaFutureMarketConfig(params.marketKey) as ZetaFutureMarketConfig;
         const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
 
         const cellConfigAccount = await getCellConfigAccountKey(params.programId);
         const botKey = await getBotKeyBySeed(params.botSeed, params.programId);
-        const botUSDCATA = await getATAKey(botKey, SOLANA_TOKEN.USDC.mintKey);
+        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
 
         const zetaMarginAccountKey = await getBotZetaMarginAccountKeyBySeed(
             params.botSeed,
@@ -391,6 +389,7 @@ export class ZetaFutureBot {
         const [zetaOpenOrdersMapKey, zetaOpenOrdersMapNonce] = await getZetaOpenOrdersMapKey(zetaOpenOrdersAccountKey);
         const openOrdersAccountInfo = await getSerumOpenOrdersAccountInfo(params.connection, zetaOpenOrdersAccountKey);
 
+        // 1. Close open orders account
         if (openOrdersAccountInfo) {
             console.log(`Close open orders account ${zetaOpenOrdersAccountKey.toString()}`);
             const closeOOAPayload: TransactionPayload = {
@@ -422,10 +421,13 @@ export class ZetaFutureBot {
                 signers: [],
             };
             payloads.push(closeOOAPayload);
+        } else {
+            payloads.push(undefined);
         }
 
+        // 2. Redeem all USDC from Zeta
         if (!botInfo.value.eq(ZERO_DECIMAL)) {
-            console.log(`Redeem ${botInfo.value} USDC from DEX`);
+            console.log(`Redeem ${botInfo.value} USDC from Zeta`);
             const redeemAllFromDexPayload: TransactionPayload = {
                 instructions: [
                     withdrawFromZetaIx({
@@ -447,81 +449,26 @@ export class ZetaFutureBot {
                 signers: [],
             };
             payloads.push(redeemAllFromDexPayload);
+        } else {
+            payloads.push(undefined);
         }
 
-        // assume Zeta balance redeemed to Bot
+        // 3. Redeem all USDC from bot
         const botUSDCBalance = await getATABalance(params.connection, botUSDCATA).then((res) => res.add(botInfo.value));
         if (!botUSDCBalance.eq(ZERO_DECIMAL)) {
             console.log(`Redeem ${botUSDCBalance} USDC from bot`);
-            const redeemAllFromBotPayload: TransactionPayload = { instructions: [], signers: [] };
-
-            const botMintKey = await getBotMintKeyBySeed2(params.botSeed, params.programId);
-            const ownerBotMintATA = await getATAKey(params.owner, botMintKey);
-
-            const botAssetKeys: PublicKey[] = [];
-            const userAssetKeys: PublicKey[] = [];
-            const cellAssetKeys: PublicKey[] = [];
-            const assetPriceKeys: PublicKey[] = [];
-            const referrerAssetKeys: PublicKey[] = [];
-
-            // USDC
-            botAssetKeys.push(botUSDCATA);
-
-            const [ownerUSDCATA, createOwnerUSDCATAIx] = await createATA(
+            const redeemAllFromBotPayload = await redeemAllFromBot(
                 params.connection,
+                params.botSeed,
                 params.owner,
-                SOLANA_TOKEN.USDC.mintKey,
-                params.owner,
-            );
-            userAssetKeys.push(ownerUSDCATA);
-            if (createOwnerUSDCATAIx) {
-                redeemAllFromBotPayload.instructions.push(createOwnerUSDCATAIx);
-            }
-
-            const [cellUSDCATA, createCellUSDCATAIx] = await createATA(
-                params.connection,
-                ADMIN_ACCOUNT,
-                SOLANA_TOKEN.USDC.mintKey,
-                params.owner,
-            );
-            cellAssetKeys.push(cellUSDCATA);
-            if (createCellUSDCATAIx) {
-                redeemAllFromBotPayload.instructions.push(createCellUSDCATAIx);
-            }
-
-            assetPriceKeys.push(SOLANA_TOKEN.USDC.pythPriceKey);
-
-            if (!params.referrer.equals(PublicKey.default)) {
-                const [referrerUSDCATA, createReferrerUSDCATAIx] = await createATA(
-                    params.connection,
-                    params.referrer,
-                    SOLANA_TOKEN.USDC.mintKey,
-                    params.owner,
-                );
-                referrerAssetKeys.push(referrerUSDCATA);
-                if (createReferrerUSDCATAIx) {
-                    redeemAllFromBotPayload.instructions.push(createReferrerUSDCATAIx);
-                }
-            }
-
-            redeemAllFromBotPayload.instructions.push(
-                redeemAllAssetsFromBotIx({
-                    botSeed: params.botSeed,
-                    botKey,
-                    botMintKey,
-                    userBotTokenKey: ownerBotMintATA,
-                    userKey: params.owner,
-                    referrerKey: params.referrer,
-                    botAssetKeys,
-                    userAssetKeys,
-                    cellAssetKeys,
-                    assetPriceKeys,
-                    cellConfigKey: cellConfigAccount,
-                    referrerAssetKeys,
-                    programId: params.programId,
-                }),
+                params.referrer,
+                params.cellAdmin,
+                ['USDC'],
+                params.programId,
             );
             payloads.push(redeemAllFromBotPayload);
+        } else {
+            payloads.push(undefined);
         }
         return payloads;
     }

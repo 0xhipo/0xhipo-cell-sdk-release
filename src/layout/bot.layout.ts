@@ -127,5 +127,5 @@ export interface CellConfigAccount {
 export interface CellCacheAccount {
     botSeed: Uint8Array;
     investorKey: PublicKey;
-    investCost: number;
+    investCost: Decimal;
 }

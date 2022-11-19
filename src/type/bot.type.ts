@@ -26,6 +26,7 @@ export enum Protocol {
     Tonic = 3,
     Ref = 6,
     ZetaPerp = 7,
+    Serum = 8,
 }
 
 export enum OrderSide {
@@ -42,12 +43,19 @@ export enum OrderType {
     Limit = 0,
     PostOnly = 1,
     Market = 2,
+    IOC = 3,
 }
 
 export enum ZetaOrderType {
     Limit = 0,
     PostOnly = 1,
     FillOrKill = 2,
+}
+
+export enum SerumOrderType {
+    Limit = 0,
+    IOC = 1,
+    PostOnly = 2,
 }
 
 export interface OpenOrder {
@@ -154,6 +162,7 @@ export interface CloseBotParams {
     marketKey: PublicKey;
     owner: PublicKey;
     referrer: PublicKey;
+    cellAdmin: PublicKey;
     programId: PublicKey;
 }
 
@@ -248,6 +257,7 @@ export interface CloseNearBotParms {
     protocol: Protocol;
     market: string;
     botIndex: number;
+    userAccountId: string;
     contractId: string;
     networkId: NearNetworkId;
 }
@@ -260,4 +270,42 @@ export interface NearAccountState {
     locked: string;
     storage_paid_at: number;
     storage_usage: number;
+}
+
+export interface NearSetDelegateParams {
+    delegateAccountId: string;
+    botIndex: number;
+    contractId: string;
+}
+
+export interface NearSetCellConfigParams {
+    delegateAccountId: string;
+    createBotLine: Decimal;
+    stopBotLine: Decimal;
+    perpFeeRatio: Decimal;
+    botOwnerMostPerpFeeRatio: Decimal;
+    contractId: string;
+}
+
+export interface CloseSolanaBotMarketParams {
+    protocol: Protocol;
+    connection: Connection;
+    botSeed: Uint8Array;
+    marketKey: PublicKey;
+    payer: PublicKey;
+    programId: PublicKey;
+}
+
+export interface CloseNearMarketParams {
+    protocol: Protocol;
+    market: string;
+    botIndex: number;
+    contractId: string;
+    networkId: NearNetworkId;
+}
+
+export interface MangoReimbursementRow {
+    index: number;
+    owner: PublicKey;
+    balances: Decimal[];
 }

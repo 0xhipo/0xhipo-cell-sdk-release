@@ -1,5 +1,5 @@
 import { Keypair, Connection } from '@solana/web3.js';
-import { PID, NEAR_CONTRACT_ID } from '../src';
+import { NEAR_CONTRACT_ID, SOLANA_ENV } from '../src';
 import base58 from 'bs58';
 
 // Solana constant
@@ -11,7 +11,7 @@ export const solanaConnection = new Connection('https://api.mainnet-beta.solana.
 
 export const solanaBotSeed = base58.decode('BMmmKskvwdoySKrkBZoMoPPeATBzw5Y3EDoLS9HaJ1tg');
 
-export const solanaProgramId = PID.DEV;
+export const solanaEnv = SOLANA_ENV.PROD_V2;
 
 // Near constant
 export const nearAccountId = 'delegate.near';

@@ -1,8 +1,8 @@
 import { SolanaBot, CloseBotParams, sendSolanaPayload } from '../../../src';
-import { solanaBotSeed, solanaConnection, solanaProgramId, solanaWallet } from '../../constant.example';
+import { solanaBotSeed, solanaConnection, solanaEnv, solanaWallet } from '../../constant.example';
 
 async function closeExample() {
-    const bot = await SolanaBot.load(solanaConnection, solanaBotSeed, solanaProgramId);
+    const bot = await SolanaBot.load(solanaConnection, solanaBotSeed, solanaEnv.programId);
     const params: CloseBotParams = {
         protocol: bot.protocol,
         connection: solanaConnection,
@@ -10,12 +10,15 @@ async function closeExample() {
         marketKey: bot.market,
         owner: bot.owner,
         referrer: bot.referrer,
-        programId: solanaProgramId,
+        cellAdmin: solanaEnv.adminAccount,
+        programId: solanaEnv.programId,
     };
     const payloads = await SolanaBot.close(params);
 
     for (const payload of payloads) {
-        await sendSolanaPayload(solanaConnection, solanaWallet, payload, false, true);
+        if (payload) {
+            await sendSolanaPayload(solanaConnection, solanaWallet, payload, true);
+        }
     }
 }
 closeExample();

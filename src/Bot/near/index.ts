@@ -2,12 +2,15 @@ import {
     CancelAllNearOrdersParams,
     CancelNearOrderParams,
     CloseNearBotParms,
+    CloseNearMarketParams,
     CreateNearBotParams,
     GetNearBotInfoParams,
     GetNearOpenOrdersParams,
     NearBotAccount,
     NearBotInfo,
     NearNetworkId,
+    NearSetCellConfigParams,
+    NearSetDelegateParams,
     NearTransactionPayload,
     OpenOrder,
     PlaceNearOrderParams,
@@ -143,6 +146,15 @@ export class NearBot {
         }
     }
 
+    static closeMarket(params: CloseNearMarketParams) {
+        switch (params.protocol) {
+            case Protocol.Tonic:
+                return TonicBot.closeMarket(params);
+            default:
+                throw `Close near bot market error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
+        }
+    }
+
     static close(params: CloseNearBotParms) {
         switch (params.protocol) {
             case Protocol.Tonic:
@@ -150,5 +162,76 @@ export class NearBot {
             default:
                 throw `Cancel near bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
+    }
+
+    static setDelegate(params: NearSetDelegateParams): NearTransactionPayload {
+        return {
+            receiverId: `${params.botIndex}.${params.contractId}`,
+            actions: [functionCall('set_delegate', { delegate: params.delegateAccountId }, DEFAULT_GAS, ZERO_BN)],
+        };
+    }
+}
+
+export class NearWhitelist {
+    static load(contractId: string): Promise<string[]> {
+        return nearViewFunction('get_white_list', {}, contractId);
+    }
+
+    static add(whiteList: string[], contractId: string): NearTransactionPayload {
+        return {
+            receiverId: contractId,
+            actions: [
+                functionCall(
+                    'add_white_list_members',
+                    {
+                        members: whiteList,
+                    },
+                    DEFAULT_GAS,
+                    ZERO_BN,
+                ),
+            ],
+        };
+    }
+
+    static remove(whiteList: string[], contractId: string): NearTransactionPayload {
+        return {
+            receiverId: contractId,
+            actions: [
+                functionCall(
+                    'remove_white_list_members',
+                    {
+                        members: whiteList,
+                    },
+                    DEFAULT_GAS,
+                    ZERO_BN,
+                ),
+            ],
+        };
+    }
+}
+
+export class NearCellConfig {
+    static load(contractId: string) {
+        return nearViewFunction('get_cell_info', {}, contractId);
+    }
+
+    static set(params: NearSetCellConfigParams) {
+        return {
+            receiverId: params.contractId,
+            actions: [
+                functionCall(
+                    'set_cell_config',
+                    {
+                        delegate: params.delegateAccountId,
+                        create_bot_line: params.createBotLine.toFixed(),
+                        stop_bot_line: params.stopBotLine.toFixed(),
+                        perf_fee_ratio: params.perpFeeRatio.toNumber(),
+                        bot_owner_most_perf_fee_ratio: params.botOwnerMostPerpFeeRatio.toNumber(),
+                    },
+                    DEFAULT_GAS,
+                    ZERO_BN,
+                ),
+            ],
+        };
     }
 }

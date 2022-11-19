@@ -3,6 +3,7 @@ import {
     CancelAllNearOrdersParams,
     CancelNearOrderParams,
     CloseNearBotParms,
+    CloseNearMarketParams,
     CreateNearBotParams,
     GetNearBotInfoParams,
     GetNearOpenOrdersParams,
@@ -10,6 +11,7 @@ import {
     NearTransactionPayload,
     OpenOrder,
     OrderSide,
+    OrderType,
     PlaceNearOrderParams,
     TonicMarketConfig,
 } from '../../type';
@@ -20,14 +22,14 @@ import {
     botTypeEnumToStr,
     getMarketPrice,
     getNearTokenBalance,
+    getNearTokenConfigBySymbol,
+    getTonicMarketConfig,
     nativeToUi,
     nearViewFunction,
     redeemFromTonicAction,
     tonicOrderSideTransform,
     tonicOrderTypeTransform,
     uiToNative,
-    getNearTokenConfigBySymbol,
-    getTonicMarketConfig,
 } from '../../util';
 import {
     BOT_CONTRACT_STORAGE_NEAR,
@@ -35,31 +37,31 @@ import {
     ONE_NEAR_YOCTO,
     TONIC_CONTRACT_ID,
     ZERO_BN,
+    ZERO_DECIMAL,
 } from '../../constant';
 import BN from 'bn.js';
 import Decimal from 'decimal.js';
-import { ZERO_DECIMAL } from '../../constant';
 
 export class TonicBot {
     /*
-     * 1. create bot (need deposit NEAR to deploy bot contract, see BOT_CONTRACT_STORAGE_NEAR)
-     * 2. quote token storage deposit & deposit to bot
-     * 3. base token storage deposit (if not NEAR)
-     * 4. tonic storage deposit
-     * 5. deposit to tonic
+     * 1. Create bot (need deposit NEAR to deploy bot contract, see BOT_CONTRACT_STORAGE_NEAR)
+     * 2. Register bot in quote ft & deposit quote ft to bot
+     * 3. Register bot in base ft (if base not NEAR)
+     * 4. Register bot in tonic
+     * 5. Deposit quote ft to tonic
      * returns [botIndex, transactionPayloads]
      */
     static async create(params: CreateNearBotParams): Promise<[number, NearTransactionPayload[]]> {
         const payloads: NearTransactionPayload[] = [];
         const botIndex = await NearBot.loadAll(params.contractId).then((res) => res.length);
         const botContractId = `${botIndex}.${params.contractId}`;
-        console.log(`Create bot ${botContractId}`);
 
         const marketConfig = getTonicMarketConfig(params.market) as TonicMarketConfig;
         const baseTokenConfig = getNearTokenConfigBySymbol(marketConfig.baseSymbol) as NearTokenConfig;
         const quoteTokenConfig = getNearTokenConfigBySymbol(marketConfig.quoteSymbol) as NearTokenConfig;
 
         // 1. create bot
+        console.log(`Create bot ${botContractId}`);
         payloads.push({
             receiverId: params.contractId,
             actions: [
@@ -82,9 +84,11 @@ export class TonicBot {
             ],
         });
 
-        // 2. quote token storage deposit & deposit to bot
+        // 2. Register bot in quote ft & deposit quote ft to bot
         //  TODO NEAR as quote token
-        console.log(`Register & deposit ${params.amount} ${quoteTokenConfig.symbol} to bot`);
+        console.log(
+            `Register ${botContractId} in ${quoteTokenConfig.symbol} & Deposit ${params.amount} ${quoteTokenConfig.symbol} to bot`,
+        );
         payloads.push({
             receiverId: quoteTokenConfig.accountId,
             actions: [
@@ -111,9 +115,9 @@ export class TonicBot {
             ],
         });
 
-        // 3. base token storage deposit (if not NEAR)
+        // 3. Register bot in base ft (if base not NEAR)
         if (baseTokenConfig.symbol != 'NEAR') {
-            console.log(`Register in ${baseTokenConfig.symbol}`);
+            console.log(`Register ${botContractId} in ${baseTokenConfig.symbol}`);
             payloads.push({
                 receiverId: baseTokenConfig.accountId,
                 actions: [
@@ -131,8 +135,8 @@ export class TonicBot {
             });
         }
 
-        // 4. tonic storage deposit
-        console.log(`Register in tonic`);
+        // 4. Register bot in tonic
+        console.log(`Register ${botContractId} in tonic`);
         payloads.push({
             receiverId: TONIC_CONTRACT_ID,
             actions: [
@@ -149,7 +153,7 @@ export class TonicBot {
             ],
         });
 
-        // 5. deposit to tonic
+        // 5. Deposit quote ft to tonic
         console.log(`Deposit ${params.amount} ${quoteTokenConfig.symbol} to tonic`);
         payloads.push({
             receiverId: botContractId,
@@ -179,12 +183,28 @@ export class TonicBot {
         // [ft:a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near, 1000000]
         const tonicBaseBalance = tonicBalances.find((i) => i[0].replace('ft:', '') == baseTokenConfig.accountId);
         const tonicQuoteBalance = tonicBalances.find((i) => i[0].replace('ft:', '') == quoteTokenConfig.accountId);
-        const baseBalance = tonicBaseBalance
+        let baseBalance = tonicBaseBalance
             ? nativeToUi(new Decimal(tonicBaseBalance[1]), baseTokenConfig.decimals)
             : ZERO_DECIMAL;
-        const quoteBalance = tonicQuoteBalance
+        let quoteBalance = tonicQuoteBalance
             ? nativeToUi(new Decimal(tonicQuoteBalance[1]), quoteTokenConfig.decimals)
             : ZERO_DECIMAL;
+
+        // add in orders base / quote balance
+        const openOrders = await this.getOpenOrders({
+            protocol: params.protocol,
+            market: params.market,
+            botIndex: params.botIndex,
+            contractId: params.contractId,
+            networkId: params.networkId,
+        });
+        for (const openOrder of openOrders) {
+            if (openOrder.side == OrderSide.Bid) {
+                quoteBalance = quoteBalance.add(openOrder.price.mul(openOrder.size));
+            } else {
+                baseBalance = baseBalance.add(openOrder.size);
+            }
+        }
 
         const basePrice = await getMarketPrice(baseTokenConfig.symbol);
 
@@ -281,12 +301,40 @@ export class TonicBot {
         };
     }
 
+    static async closeMarket(params: CloseNearMarketParams): Promise<NearTransactionPayload | undefined> {
+        const botInfo = await this.getBotInfo({
+            protocol: params.protocol,
+            market: params.market,
+            botIndex: params.botIndex,
+            contractId: params.contractId,
+            networkId: params.networkId,
+        });
+
+        if (botInfo.position.eq(ZERO_DECIMAL)) {
+            return;
+        }
+        const side = botInfo.position.gt(ZERO_DECIMAL) ? OrderSide.Ask : OrderSide.Bid;
+
+        return this.placeOrder({
+            protocol: params.protocol,
+            market: params.market,
+            price: new Decimal(1),
+            size: botInfo.position.abs(),
+            side,
+            orderType: OrderType.Market,
+            clientId: Math.floor(new Date().getTime() / 1000).toString(),
+            botIndex: params.botIndex,
+            contractId: params.contractId,
+        });
+    }
+
     /*
      * Requirement: No open orders
-     * 1. redeem base & quote ft from dex
-     * 2. redeem base ft from bot
-     * 3. redeem quote ft from bot
-     * 4. close bot
+     * 1. Redeem base & quote ft from tonic
+     * 2. Register wallet in base ft (if needed)
+     * 3. Redeem base ft from bot (if needed and base not NEAR)
+     * 4. Redeem quote ft from bot (if needed and quote not NEAR)
+     * 5. Close bot
      */
     static async close(params: CloseNearBotParms) {
         const openOrders = await this.getOpenOrders({
@@ -317,7 +365,7 @@ export class TonicBot {
             ? nativeToUi(new Decimal(tonicQuoteBalance[1]), quoteTokenConfig.decimals)
             : ZERO_DECIMAL;
 
-        // 1. redeem base & quote ft from dex
+        // 1. Redeem base & quote ft from tonic
         const redeemFromDexPayload: NearTransactionPayload = { receiverId: botContractId, actions: [] };
         if (baseBalance.gt(ZERO_DECIMAL)) {
             console.log(`Redeem ${baseBalance} ${baseTokenConfig.symbol} from dex`);
@@ -331,12 +379,39 @@ export class TonicBot {
             payloads.push(redeemFromDexPayload);
         }
 
-        // 2. redeem base ft from bot
+        // 2. Register wallet in base ft (if needed)
+        // 3. Redeem base ft from bot (if needed and base not NEAR)
         if (baseTokenConfig.symbol != 'NEAR') {
             const botBaseBalance = await getNearTokenBalance(baseTokenConfig.symbol, botContractId).then((res) =>
                 res.add(baseBalance),
             );
             if (botBaseBalance.gt(ZERO_DECIMAL)) {
+                const storageBalance = await nearViewFunction(
+                    'storage_balance_of',
+                    {
+                        account_id: params.userAccountId,
+                    },
+                    baseTokenConfig.accountId,
+                );
+                if (!storageBalance) {
+                    console.log(`Register ${params.userAccountId} in ${baseTokenConfig.symbol}`);
+                    payloads.push({
+                        receiverId: baseTokenConfig.accountId,
+                        actions: [
+                            functionCall(
+                                'storage_deposit',
+                                {
+                                    account_id: params.userAccountId,
+                                    registration_only: true,
+                                },
+                                DEFAULT_GAS,
+                                // 0.0125 NEAR
+                                new BN('12500000000000000000000'),
+                            ),
+                        ],
+                    });
+                }
+
                 console.log(`Redeem ${botBaseBalance} ${baseTokenConfig.symbol} from bot`);
                 payloads.push({
                     receiverId: params.contractId,
@@ -356,7 +431,7 @@ export class TonicBot {
             }
         }
 
-        // 3. redeem quote ft from bot
+        // 4. Redeem quote ft from bot (if needed and quote not NEAR)
         if (quoteTokenConfig.symbol != 'NEAR') {
             const botQuoteBalance = await getNearTokenBalance(quoteTokenConfig.symbol, botContractId).then((res) =>
                 res.add(quoteBalance),
@@ -381,8 +456,8 @@ export class TonicBot {
             }
         }
 
-        // 4. close bot
-        console.log(`Close bot ${botContractId}`);
+        // 5. Close bot
+        console.log(`Close bot ${botContractId} & redeem ${BOT_CONTRACT_STORAGE_NEAR} NEAR from bot contract`);
         payloads.push({
             receiverId: params.contractId,
             actions: [

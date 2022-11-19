@@ -4,11 +4,19 @@ export const TONIC_CONTRACT_ID = 'v1.orderbook.near';
 
 export const TONIC_MARKETS: TonicMarketConfig[] = [
     {
-        name: 'NEAR/USDC',
+        name: 'NEAR-100/USDC',
         marketId: '2UmzUXYpaZg4vXfFVmD7r8mYUYkKEF19xpjLw7ygDUwp',
         baseSymbol: 'NEAR',
         quoteSymbol: 'USDC',
         orderPriceDecimals: 2,
+        orderQuantityDecimals: 2,
+    },
+    {
+        name: 'NEAR/USDC',
+        marketId: '9CeAnXRUg48e6VwSEwB1v52qSVkgiDEfw98FjDMCkSto',
+        baseSymbol: 'NEAR',
+        quoteSymbol: 'USDC',
+        orderPriceDecimals: 3,
         orderQuantityDecimals: 2,
     },
     {

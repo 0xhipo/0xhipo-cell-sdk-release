@@ -9,20 +9,38 @@ import {
 import {
     CellCacheAccount,
     CellCacheAccountLayout,
+    MangoReimbursementAccount,
+    mangoReimbursementAccountLayout,
+    MangoReimbursementGroup,
+    mangoReimbursementGroupLayout,
+    MangoReimbursementTableLayout,
     ZetaGroupAccount,
     zetaGroupAccountLayout,
     ZetaMarginAccount,
     zetaMarginAccountLayout,
 } from '../layout';
 import Decimal from 'decimal.js';
-import { SOLANA_TOKEN, ZERO_DECIMAL, ZETA_DEX_PROGRAM_ID, ZETA_PROGRAM_ID } from '../constant';
-import { SerumOpenOrdersAccountInfo, TransactionPayload, ZetaAssetConfig, ZetaExpirySeries } from '../type';
+import {
+    MANGO_REIMBURSEMENT_GROUP_KEY,
+    MANGO_REIMBURSEMENT_PROGRAM_ID,
+    ZERO_DECIMAL,
+    ZETA_DEX_PROGRAM_ID,
+    ZETA_PROGRAM_ID,
+} from '../constant';
+import {
+    MangoReimbursementRow,
+    SerumOpenOrdersAccountInfo,
+    SolanaTokenConfig,
+    TransactionPayload,
+    ZetaAssetConfig,
+    ZetaExpirySeries,
+} from '../type';
 import { _OPEN_ORDERS_LAYOUT_V2 } from '@project-serum/serum/lib/market';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import crypto from 'crypto';
-import { createATAIx } from '../instruction';
+import { createATAIx, redeemAllAssetsFromBotIx } from '../instruction';
 import { bnToDecimal, nativeToUi } from './number.util';
-import { getZetaAssetConfigBySymbol } from './constant.util';
+import { getTokenConfigBySymbol, getZetaAssetConfigBySymbol } from './constant.util';
 
 export async function getZetaMarginAccount(
     connection: Connection,
@@ -158,7 +176,15 @@ export async function getZetaVault(mint: PublicKey): Promise<PublicKey> {
     );
 }
 
-export async function getCellCacheAccount(connection: Connection, cellCacheKey: PublicKey): Promise<CellCacheAccount> {
+export async function getCellCacheAccount(
+    connection: Connection,
+    botSeed: Uint8Array,
+    userKey: PublicKey,
+    programId: PublicKey,
+): Promise<CellCacheAccount> {
+    const botKey = await getBotKeyBySeed(botSeed, programId);
+    const cellCacheKey = await getCellCacheKey(botKey, userKey, programId);
+
     const accountInfo = await connection.getAccountInfo(cellCacheKey);
     if (!accountInfo) {
         throw `Get cell cache account error: account ${cellCacheKey.toString()} not available`;
@@ -166,7 +192,7 @@ export async function getCellCacheAccount(connection: Connection, cellCacheKey: 
     const cellCache = CellCacheAccountLayout.decode(accountInfo.data);
     return {
         ...cellCache,
-        investCost: cellCache.investCost.toNumber() / Math.pow(10, SOLANA_TOKEN.USDC.decimals),
+        investCost: nativeToUi(new Decimal(cellCache.investCost.toString()), 6),
     };
 }
 
@@ -216,4 +242,133 @@ export async function getZetaExpirySeries(connection: Connection, baseSymbol: st
             expiryTs: i['expiryTs'].muln(1000).toNumber(),
         };
     });
+}
+
+export function getSerumOpenOrdersAccountKey(botKey: PublicKey, programId: PublicKey) {
+    return PublicKey.findProgramAddress([botKey.toBuffer(), Buffer.from('open-orders', 'utf-8')], programId).then(
+        (res) => res[0],
+    );
+}
+
+export function getMangoReimbursementAccountKey(ownerKey: PublicKey) {
+    return PublicKey.findProgramAddress(
+        [Buffer.from('ReimbursementAccount'), MANGO_REIMBURSEMENT_GROUP_KEY.toBuffer(), ownerKey.toBuffer()],
+        MANGO_REIMBURSEMENT_PROGRAM_ID,
+    ).then((res) => res[0]);
+}
+
+export async function getMangoReimbursementGroup(connection: Connection): Promise<MangoReimbursementGroup> {
+    const accountInfo = await connection.getAccountInfo(MANGO_REIMBURSEMENT_GROUP_KEY);
+    if (!accountInfo) {
+        throw `Get mango reimbursement group error: account not found ${MANGO_REIMBURSEMENT_GROUP_KEY.toString()}`;
+    }
+    return mangoReimbursementGroupLayout('').decode(accountInfo.data, 0);
+}
+
+export async function getMangoReimbursementTable(connection: Connection, reimbursementTableKey: PublicKey) {
+    const accountInfo = await connection.getAccountInfo(reimbursementTableKey);
+    if (!accountInfo) {
+        throw `Get mango reimbursement table error: account not found ${reimbursementTableKey.toString()}`;
+    }
+    return MangoReimbursementTableLayout.decode(accountInfo.data.slice(40));
+}
+
+export async function getMangoReimbursementRow(
+    connection,
+    botKey: PublicKey,
+): Promise<MangoReimbursementRow | undefined> {
+    const reimbursementGroup = await getMangoReimbursementGroup(connection);
+    const rows = await getMangoReimbursementTable(connection, reimbursementGroup.table).then((res) => res['rows']);
+    for (const [index, row] of rows.entries()) {
+        if (row['owner'].equals(botKey)) {
+            return { index, owner: row['owner'], balances: row['balances'].map((i) => new Decimal(i.toString())) };
+        }
+    }
+}
+
+export async function getMangoReimbursementAccount(
+    connection: Connection,
+    reimbursementAccountKey: PublicKey,
+): Promise<MangoReimbursementAccount | undefined> {
+    const accountInfo = await connection.getAccountInfo(reimbursementAccountKey);
+    if (!accountInfo) {
+        return;
+    }
+    return mangoReimbursementAccountLayout('').decode(accountInfo.data, 0);
+}
+
+export async function redeemAllFromBot(
+    connection: Connection,
+    botSeed: Uint8Array,
+    owner: PublicKey,
+    referrer: PublicKey,
+    cellAdmin: PublicKey,
+    tokenSymbols: string[],
+    programId: PublicKey,
+): Promise<TransactionPayload> {
+    if (tokenSymbols.length == 0) {
+        throw `Redeem all from bot error: no asset in redeem token list`;
+    }
+    const botKey = await getBotKeyBySeed(botSeed, programId);
+    const botMintKey = await getBotMintKeyBySeed2(botSeed, programId);
+    const ownerBotMintATA = await getATAKey(owner, botMintKey);
+    const cellConfigKey = await getCellConfigAccountKey(programId);
+
+    const payload: TransactionPayload = { instructions: [], signers: [] };
+    const botAssetKeys: PublicKey[] = [];
+    const ownerAssetKeys: PublicKey[] = [];
+    const cellAssetKeys: PublicKey[] = [];
+    const assetPriceKeys: PublicKey[] = [];
+    const referrerAssetKeys: PublicKey[] = [];
+    for (const tokenSymbol of tokenSymbols) {
+        const tokenConfig = getTokenConfigBySymbol(tokenSymbol) as SolanaTokenConfig;
+
+        const botTokenATA = await getATAKey(botKey, tokenConfig.mintKey);
+        botAssetKeys.push(botTokenATA);
+
+        const [ownerTokenATA, createOwnerTokenATAIx] = await createATA(connection, owner, tokenConfig.mintKey, owner);
+        if (createOwnerTokenATAIx) {
+            payload.instructions.push(createOwnerTokenATAIx);
+        }
+        ownerAssetKeys.push(ownerTokenATA);
+
+        const [cellTokenATA, createCellTokenATAIx] = await createATA(connection, cellAdmin, tokenConfig.mintKey, owner);
+        if (createCellTokenATAIx) {
+            payload.instructions.push(createCellTokenATAIx);
+        }
+        cellAssetKeys.push(cellTokenATA);
+
+        assetPriceKeys.push(tokenConfig.pythPriceKey);
+
+        if (!referrer.equals(PublicKey.default)) {
+            const [referrerTokenATA, createReferrerTokenATAIx] = await createATA(
+                connection,
+                referrer,
+                tokenConfig.mintKey,
+                owner,
+            );
+            if (createReferrerTokenATAIx) {
+                payload.instructions.push(createReferrerTokenATAIx);
+            }
+            referrerAssetKeys.push(referrerTokenATA);
+        }
+    }
+    payload.instructions.push(
+        redeemAllAssetsFromBotIx({
+            botSeed,
+            botKey,
+            botMintKey,
+            userBotTokenKey: ownerBotMintATA,
+            userKey: owner,
+            referrerKey: referrer,
+            botAssetKeys,
+            userAssetKeys: ownerAssetKeys,
+            cellAssetKeys,
+            assetPriceKeys,
+            cellConfigKey: cellConfigKey,
+            referrerAssetKeys,
+            programId: programId,
+        }),
+    );
+    return payload;
 }

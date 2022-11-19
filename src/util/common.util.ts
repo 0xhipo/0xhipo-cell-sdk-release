@@ -1,7 +1,13 @@
-import { BotStatus, BotType, OrderSide, OrderType, Protocol, ZetaOrderSide, ZetaOrderType } from '../type';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { parsePriceData } from '@pythnetwork/client';
-import { PythPriceNotFoundError } from '../error';
+import {
+    BotStatus,
+    BotType,
+    OrderSide,
+    OrderType,
+    Protocol,
+    SerumOrderType,
+    ZetaOrderSide,
+    ZetaOrderType,
+} from '../type';
 import Decimal from 'decimal.js';
 import { COIN_GECKO_TOKEN_MAP } from '../constant/coingecko.constant';
 import { uiToNative } from './number.util';
@@ -21,20 +27,17 @@ export function zetaOrderTypeTransform(orderType: OrderType): ZetaOrderType {
     }
 }
 
-export async function getPythPrice(connection: Connection, pythPriceKey: PublicKey): Promise<number | undefined> {
-    const accountInfo = await connection.getAccountInfo(pythPriceKey);
-    if (accountInfo) {
-        try {
-            const pythPriceData = parsePriceData(accountInfo.data);
-            if (pythPriceData) {
-                return pythPriceData.price;
-            }
-        } catch (e) {
-            // invalid pyth price account data
-            throw new PythPriceNotFoundError(pythPriceKey.toString());
-        }
+export function serumOrderTypeTransform(orderType: OrderType): SerumOrderType {
+    switch (orderType) {
+        case OrderType.Limit:
+            return SerumOrderType.Limit;
+        case OrderType.PostOnly:
+            return SerumOrderType.PostOnly;
+        case OrderType.IOC:
+            return SerumOrderType.IOC;
+        default:
+            throw `Unsupported zeta order type ${orderType}`;
     }
-    throw new PythPriceNotFoundError(pythPriceKey.toString());
 }
 
 // 6 decimals with last 2 decimals zero, e.g. 35.625413 -> 35625400
@@ -56,6 +59,8 @@ export function botProtocolEnumToStr(protocol: Protocol): string {
             return 'Tonic';
         case Protocol.Ref:
             return 'Ref';
+        case Protocol.Serum:
+            return 'Serum';
         default:
             throw `Invalid bot protocol type enum ${protocol}`;
     }
@@ -73,6 +78,8 @@ export function botProtocolStrToEnum(protocolType: string): Protocol {
             return Protocol.Tonic;
         case 'Ref':
             return Protocol.Ref;
+        case 'Serum':
+            return Protocol.Serum;
         default:
             throw `Invalid bot protocol type ${protocolType}`;
     }
@@ -152,5 +159,7 @@ export function tonicOrderTypeTransform(orderType: OrderType): string {
             return 'PostOnly';
         case OrderType.Market:
             return 'Market';
+        default:
+            throw `Unsupported tonic order type ${orderType}`;
     }
 }

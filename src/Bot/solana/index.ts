@@ -2,6 +2,7 @@ import {
     BotInfo,
     CancelOrderParams,
     CloseBotParams,
+    CloseSolanaBotMarketParams,
     CreateBotParams,
     GetBotInfoParams,
     GetOpenOrdersParams,
@@ -26,6 +27,9 @@ import {
 } from '../../instruction';
 import { BotAccount, botAccountLayout, CellConfigAccount, CellConfigAccountLayout } from '../../layout';
 import { CellConfigAccountNotFoundError } from '../../error';
+import { SerumBot } from './SerumBot';
+import { MangoSpotBot } from './MangoSpotBot';
+import { MangoPerpBot } from './MangoPerpBot';
 
 export class SolanaBot {
     static async load(connection: Connection, botSeed: Uint8Array, programId: PublicKey): Promise<BotAccount> {
@@ -51,6 +55,8 @@ export class SolanaBot {
                 return ZetaFutureBot.create(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.create(params);
+            case Protocol.Serum:
+                return SerumBot.create(params);
             default:
                 throw `Create bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -77,6 +83,8 @@ export class SolanaBot {
                 return ZetaFutureBot.stop(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.stop(params);
+            case Protocol.Serum:
+                return SerumBot.stop(params);
             default:
                 throw `Stop bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -104,6 +112,8 @@ export class SolanaBot {
                 return ZetaFutureBot.getBotInfo(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.getBotInfo(params);
+            case Protocol.Serum:
+                return SerumBot.getBotInfo(params);
             default:
                 throw `Get bot info error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -115,6 +125,8 @@ export class SolanaBot {
                 return ZetaFutureBot.getOpenOrders(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.getOpenOrders(params);
+            case Protocol.Serum:
+                return SerumBot.getOpenOrders(params);
             default:
                 throw `Get open orders error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -126,6 +138,8 @@ export class SolanaBot {
                 return ZetaFutureBot.placeOrder(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.placeOrder(params);
+            case Protocol.Serum:
+                return SerumBot.placeOrder(params);
             default:
                 throw `Place order error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -137,17 +151,34 @@ export class SolanaBot {
                 return ZetaFutureBot.cancelOrder(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.cancelOrder(params);
+            case Protocol.Serum:
+                return SerumBot.cancelOrder(params);
             default:
                 throw `Cancel order error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
     }
 
-    static async close(params: CloseBotParams) {
+    static async closeMarket(params: CloseSolanaBotMarketParams): Promise<TransactionPayload | undefined> {
+        switch (params.protocol) {
+            case Protocol.Serum:
+                return SerumBot.closeMarket(params);
+            default:
+                throw `Close market error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
+        }
+    }
+
+    static async close(params: CloseBotParams): Promise<(TransactionPayload | undefined)[]> {
         switch (params.protocol) {
             case Protocol.ZetaFuture:
                 return ZetaFutureBot.close(params);
             case Protocol.ZetaPerp:
                 return ZetaPerpBot.close(params);
+            case Protocol.Serum:
+                return SerumBot.close(params);
+            case Protocol.MangoSpot:
+                return MangoSpotBot.close(params);
+            case Protocol.MangoPerp:
+                return MangoPerpBot.close(params);
             default:
                 throw `Close bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }

@@ -1,17 +1,17 @@
 import { SolanaBot, CancelOrderParams, OrderSide } from '../../../src';
-import { solanaBotSeed, solanaConnection, solanaProgramId, solanaWallet } from '../../constant.example';
+import { solanaBotSeed, solanaConnection, solanaEnv, solanaWallet } from '../../constant.example';
 import { sendSolanaPayload } from '../../../src';
 
 async function cancelOrderExample() {
-    const bot = await SolanaBot.load(solanaConnection, solanaBotSeed, solanaProgramId);
+    const bot = await SolanaBot.load(solanaConnection, solanaBotSeed, solanaEnv.programId);
     const params: CancelOrderParams = {
         protocol: bot.protocol,
         botSeed: solanaBotSeed,
         side: OrderSide.Ask,
-        orderId: '737871607622789435596422580',
+        orderId: '368934881474191032579582',
         marketKey: bot.market,
         payer: solanaWallet.publicKey,
-        programId: solanaProgramId,
+        programId: solanaEnv.programId,
     };
     const payload = await SolanaBot.cancelOrder(params);
     await sendSolanaPayload(solanaConnection, solanaWallet, payload, false);

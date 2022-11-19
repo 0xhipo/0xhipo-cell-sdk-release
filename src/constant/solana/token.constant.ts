@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+import { SolanaTokenConfig } from '../../type';
 
 export const PYTH_PRICE_KEY = {
     USDC: new PublicKey('Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD'),
@@ -19,110 +20,110 @@ export const PYTH_PRICE_KEY = {
     ADA: new PublicKey('3pyn4svBbxJ9Wnn3RVeafyLWfzie6yC5eTig2S62v9SC'),
 };
 
-export const SOLANA_TOKEN = {
-    USDC: {
+export const SOLANA_TOKENS: SolanaTokenConfig[] = [
+    {
         name: 'USDC',
         mintKey: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
         decimals: 6,
         tokenIndex: 0,
         pythPriceKey: PYTH_PRICE_KEY.USDC,
     },
-    MNGO: {
+    {
         name: 'MNGO',
         mintKey: new PublicKey('MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac'),
         decimals: 6,
         tokenIndex: 1,
         pythPriceKey: PYTH_PRICE_KEY.MNGO,
     },
-    BTC: {
+    {
         name: 'BTC',
         mintKey: new PublicKey('9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E'),
         decimals: 6,
         tokenIndex: 2,
         pythPriceKey: PYTH_PRICE_KEY.BTC,
     },
-    ETH: {
+    {
         name: 'ETH',
         mintKey: new PublicKey('2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk'),
         decimals: 6,
         tokenIndex: 3,
         pythPriceKey: PYTH_PRICE_KEY.ETH,
     },
-    SOL: {
+    {
         name: 'SOL',
         mintKey: new PublicKey('So11111111111111111111111111111111111111112'),
         decimals: 9,
         tokenIndex: 4,
         pythPriceKey: PYTH_PRICE_KEY.SOL,
     },
-    USDT: {
+    {
         name: 'USDT',
         mintKey: new PublicKey('Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'),
         decimals: 6,
         tokenIndex: 5,
         pythPriceKey: PYTH_PRICE_KEY.USDT,
     },
-    SRM: {
+    {
         name: 'SRM',
         mintKey: new PublicKey('SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt'),
         decimals: 6,
         tokenIndex: 6,
         pythPriceKey: PYTH_PRICE_KEY.SRM,
     },
-    RAY: {
+    {
         name: 'RAY',
         mintKey: new PublicKey('4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'),
         decimals: 6,
         tokenIndex: 7,
         pythPriceKey: PYTH_PRICE_KEY.RAY,
     },
-    COPE: {
+    {
         name: 'COPE',
         mintKey: new PublicKey('8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh'),
         decimals: 6,
         tokenIndex: 8,
         pythPriceKey: PYTH_PRICE_KEY.COPE,
     },
-    FTT: {
+    {
         name: 'FTT',
         mintKey: new PublicKey('AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3'),
         decimals: 6,
         tokenIndex: 9,
         pythPriceKey: PYTH_PRICE_KEY.FTT,
     },
-    MSOL: {
+    {
         name: 'MSOL',
         mintKey: new PublicKey('mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So'),
         decimals: 9,
         tokenIndex: 10,
         pythPriceKey: PYTH_PRICE_KEY.MSOL,
     },
-    BNB: {
+    {
         name: 'BNB',
         mintKey: new PublicKey('9gP2kCy3wA1ctvYWQk75guqXuHfrEomqydHLtcTCqiLa'),
         decimals: 8,
         tokenIndex: 11,
         pythPriceKey: PYTH_PRICE_KEY.BNB,
     },
-    AVAX: {
+    {
         name: 'AVAX',
         mintKey: new PublicKey('KgV1GvrHQmRBY8sHQQeUKwTm2r2h8t4C8qt12Cw1HVE'),
         decimals: 8,
         tokenIndex: 12,
         pythPriceKey: PYTH_PRICE_KEY.AVAX,
     },
-    LUNA: {
+    {
         name: 'LUNA',
         mintKey: new PublicKey('F6v4wfAdJB8D8p77bMXZgYt8TDKsYxLYxH5AFhUkYx9W'),
         decimals: 6,
         tokenIndex: 13,
         pythPriceKey: PYTH_PRICE_KEY.LUNA,
     },
-    GMT: {
+    {
         name: 'GMT',
         mintKey: new PublicKey('7i5KKsX2weiTkry7jA4ZwSuXGhs5eJBEjY8vVxR4pfRx'),
         decimals: 9,
         tokenIndex: 14,
         pythPriceKey: PYTH_PRICE_KEY.GMT,
     },
-};
+];

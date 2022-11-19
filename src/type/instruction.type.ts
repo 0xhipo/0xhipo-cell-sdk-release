@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { Numberu128 } from '../util';
-import { ZetaOrderSide, ZetaOrderType } from '../type';
+import { SerumOrderType, ZetaOrderSide, ZetaOrderType } from '../type';
 import { BotType, OrderSide, Protocol } from './bot.type';
 import Decimal from 'decimal.js';
 
@@ -56,6 +56,11 @@ export enum InstructionIndex {
     ZetaPoolWithdraw = 55,
     ZetaPoolAdjustReserve = 56,
     PlaceZetaPerpOrder = 57,
+    SerumPlaceOrder = 100,
+    SerumSettleFunds = 101,
+    SerumCancelOrder = 102,
+    SerumInitOpenOrders = 103,
+    SerumCloseOpenOrers = 104,
 }
 
 export interface CreateBotIxParams {
@@ -634,6 +639,7 @@ export interface MangoReimbursementIxParams {
     botAccount: PublicKey;
     claimMintTokenAccount: PublicKey;
     claimMintAccount: PublicKey;
+    reimbursementTableAccount: PublicKey;
     programId: PublicKey;
 }
 
@@ -725,5 +731,81 @@ export interface ZetaPoolAdjustReserveIxParams {
     userOrBotDelegateAccount: PublicKey;
     cellConfigAccount: PublicKey;
     pythPriceAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumPlaceOrderIxParams {
+    botSeed: Uint8Array;
+    side: OrderSide;
+    orderType: SerumOrderType;
+    limitPrice: Decimal;
+    amountToTrade: Decimal;
+    coinLotSize: number;
+    pcLotSize: number;
+    clientOrderId: string;
+    userOrBotDelegateAccount: PublicKey;
+    marketAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    requestQueueAccount: PublicKey;
+    eventQueueAccount: PublicKey;
+    bidsAccount: PublicKey;
+    asksAccount: PublicKey;
+    botOrWorkingCapAssetAccount: PublicKey;
+    botOrWorkingCapAccount: PublicKey;
+    botAccount: PublicKey;
+    coinVault: PublicKey;
+    pcVault: PublicKey;
+    cellConfigAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumSettleFundsIxParams {
+    botSeed: Uint8Array;
+    userOrBotDelegateAccount: PublicKey;
+    marketAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    botAccount: PublicKey;
+    coinVault: PublicKey;
+    coinWalletAccount: PublicKey;
+    pcVault: PublicKey;
+    pcWalletAccount: PublicKey;
+    vaultSigner: PublicKey;
+    cellConfigAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumCancelOrderIxParams {
+    botSeed: Uint8Array;
+    side: OrderSide;
+    orderId: string;
+    userOrBotDelegateAccount: PublicKey;
+    marketAccount: PublicKey;
+    bidsAccount: PublicKey;
+    asksAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    botAccount: PublicKey;
+    eventQueueAccount: PublicKey;
+    cellConfigAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumInitOpenOrdersIxParams {
+    botSeed: Uint8Array;
+    userOrBotDelegateAccount: PublicKey;
+    marketAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    botAccount: PublicKey;
+    cellConfigAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumCloseOpenOrdersIxParams {
+    botSeed: Uint8Array;
+    userOrBotDelegateAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    botAccount: PublicKey;
+    userAccount: PublicKey;
+    marketAccount: PublicKey;
+    cellConfigAccount: PublicKey;
     programId: PublicKey;
 }

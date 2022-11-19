@@ -1,9 +1,9 @@
 import { SolanaPool, DepositPoolParams, sendSolanaPayload } from '../../../src';
 import Decimal from 'decimal.js';
-import { solanaBotSeed, solanaConnection, solanaProgramId, solanaWallet } from '../../constant.example';
+import {solanaBotSeed, solanaConnection, solanaEnv, solanaWallet} from '../../constant.example';
 
 async function depositExample() {
-    const pool = await SolanaPool.load(solanaConnection, solanaBotSeed, solanaProgramId);
+    const pool = await SolanaPool.load(solanaConnection, solanaBotSeed, solanaEnv.programId);
     const params: DepositPoolParams = {
         protocol: pool.protocol,
         connection: solanaConnection,
@@ -11,7 +11,7 @@ async function depositExample() {
         botSeed: solanaBotSeed,
         marketKey: pool.market,
         investor: solanaWallet.publicKey,
-        programId: solanaProgramId,
+        programId: solanaEnv.programId,
     };
     const payload = await SolanaPool.deposit(params);
     await sendSolanaPayload(solanaConnection, solanaWallet, payload, false);

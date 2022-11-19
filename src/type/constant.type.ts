@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 
-export interface TokenConfig {
+export interface SolanaTokenConfig {
     name: string;
     mintKey: PublicKey;
     decimals: number;
@@ -99,4 +99,73 @@ export interface RefPoolConfig {
     tokenYSymbol: string;
     pointDelta: number;
     fee: number;
+}
+
+export interface SerumMarketConfig {
+    name: string;
+    address: PublicKey;
+    baseSymbol: string;
+    quoteSymbol: string;
+    orderPriceDecimals: number;
+    orderQuantityDecimals: number;
+    leverage: number;
+    baseLotSize: number;
+    quoteLotSize: number;
+    bids: PublicKey;
+    asks: PublicKey;
+    requestQueue: PublicKey;
+    eventQueue: PublicKey;
+    baseVault: PublicKey;
+    quoteVault: PublicKey;
+    vaultSigner: PublicKey;
+}
+
+export interface MangoSpotMarketConfig {
+    name: string;
+    publicKey: PublicKey;
+    orderPriceDecimals: number;
+    orderQuantityDecimals: number;
+    leverage: number;
+    marketIndex: number;
+    baseSymbol: string;
+    baseDecimals: number;
+    quoteDecimals: number;
+    baseLotSize: number;
+    quoteLotSize: number;
+    bidsKey: PublicKey;
+    asksKey: PublicKey;
+    eventQueueKey: PublicKey;
+    requestQueueKey: PublicKey;
+    baseVaultKey: PublicKey;
+    quoteVaultKey: PublicKey;
+    vaultSignerKey: PublicKey;
+}
+
+export interface MangoPerpMarketConfig {
+    name: string;
+    publicKey: PublicKey;
+    orderPriceDecimals: number;
+    orderQuantityDecimals: number;
+    leverage: number;
+    marketIndex: number;
+    baseSymbol: string;
+    baseDecimals: number;
+    quoteDecimals: number;
+    bidsKey: PublicKey;
+    asksKey: PublicKey;
+    eventQueueKey: PublicKey;
+    mngoVault: PublicKey;
+}
+
+export interface SolanaEnvConfig {
+    programId: PublicKey;
+    adminAccount: PublicKey;
+}
+
+export enum SolanaEnvName {
+    DEV = 'DEV',
+    ZETA = 'ZETA',
+    POOL = 'POOL',
+    PROD = 'PROD',
+    PROD_V2 = 'PROD_V2',
 }

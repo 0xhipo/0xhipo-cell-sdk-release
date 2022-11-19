@@ -1,16 +1,27 @@
 import {
+    MangoPerpMarketConfig,
+    MangoSpotMarketConfig,
     NearEnvConfig,
     NearNetworkId,
     NearTokenConfig,
     RefPoolConfig,
-    TokenConfig,
+    SerumMarketConfig,
+    SolanaTokenConfig,
     TonicMarketConfig,
     ZetaAssetConfig,
     ZetaFutureMarketConfig,
     ZetaPerpMarketConfig,
 } from '../type';
-import { NEAR_ENV, NEAR_TOKENS, TONIC_MARKETS, REF_POOLS } from '../constant';
-import { SOLANA_TOKEN, ZETA_ASSETS_CONFIG, ZETA_FUTURE_MARKETS, ZETA_PERP_MARKETS } from '../constant';
+import {
+    NEAR_ENV,
+    NEAR_TOKENS,
+    TONIC_MARKETS,
+    REF_POOLS,
+    SERUM_MARKETS,
+    MANGO_SPOT_MARKETS,
+    MANGO_PERP_MARKETS,
+} from '../constant';
+import { SOLANA_TOKENS, ZETA_ASSETS_CONFIG, ZETA_FUTURE_MARKETS, ZETA_PERP_MARKETS } from '../constant';
 import { PublicKey } from '@solana/web3.js';
 
 export function getNearEnvConfig(networkId: NearNetworkId): NearEnvConfig | undefined {
@@ -25,8 +36,16 @@ export function getNearTokenConfigBySymbol(symbol: string): NearTokenConfig | un
     return NEAR_TOKENS.find((i) => i.symbol == symbol);
 }
 
-export function getTokenConfigBySymbol(tokenSymbol: string): TokenConfig | undefined {
-    return Object.values(SOLANA_TOKEN).find((i) => i.name == tokenSymbol);
+export function getNearTokenConfigByAccountId(accountId: string): NearTokenConfig | undefined {
+    return NEAR_TOKENS.find((i) => i.accountId == accountId);
+}
+
+export function getTokenConfigBySymbol(tokenSymbol: string): SolanaTokenConfig | undefined {
+    return SOLANA_TOKENS.find((i) => i.name == tokenSymbol);
+}
+
+export function getTokenConfig(tokenMint: PublicKey): SolanaTokenConfig | undefined {
+    return SOLANA_TOKENS.find((i) => i.mintKey.equals(tokenMint));
 }
 
 export function getZetaAssetConfigBySymbol(symbol: string): ZetaAssetConfig | undefined {
@@ -43,4 +62,16 @@ export function getZetaPerpMarketConfig(marketKey: PublicKey): ZetaPerpMarketCon
 
 export function getRefPoolConfig(poolId: string): RefPoolConfig | undefined {
     return REF_POOLS.find((i) => i.poolId == poolId);
+}
+
+export function getSerumMarketConfig(marketKey: PublicKey): SerumMarketConfig | undefined {
+    return SERUM_MARKETS.find((i) => i.address.equals(marketKey));
+}
+
+export function getMangoSpotMarketConfig(marketKey: PublicKey): MangoSpotMarketConfig | undefined {
+    return MANGO_SPOT_MARKETS.find((i) => i.publicKey.equals(marketKey));
+}
+
+export function getMangoPerpMarketConfig(marketKey: PublicKey): MangoPerpMarketConfig | undefined {
+    return MANGO_PERP_MARKETS.find((i) => i.publicKey.equals(marketKey));
 }

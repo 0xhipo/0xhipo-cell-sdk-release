@@ -25,6 +25,7 @@ export interface RedeemPoolParams {
     marketKey: PublicKey;
     investor: PublicKey;
     botOwner: PublicKey;
+    cellAdmin: PublicKey;
     programId: PublicKey;
 }
 

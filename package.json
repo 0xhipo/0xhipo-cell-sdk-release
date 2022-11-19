@@ -1,8 +1,8 @@
 {
     "name": "0xhipo-cell-sdk-release",
-    "version": "2.3.3",
+    "version": "2.3.15",
     "description": "",
-    "main": "index.js",
+    "main": "dist/index.js",
     "scripts": {
         "build": "tsc",
         "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
@@ -24,15 +24,12 @@
     "dependencies": {
         "@blockworks-foundation/mango-client": "^3.6.11",
         "@project-serum/serum": "^0.13.65",
-        "@pythnetwork/client": "^2.7.1",
         "@solana/spl-token": "^0.3.5",
         "@solana/web3.js": "^1.47.3",
-        "@zetamarkets/sdk": "^0.16.1",
         "borsh": "^0.7.0",
         "buffer-layout": "^1.2.2",
         "decimal.js": "^10.4.2",
-        "near-api-js": "^1.1.0",
-        "node-fetch-with-proxy": "^0.1.6"
+        "near-api-js": "^1.1.0"
     },
     "devDependencies": {
         "@types/bn.js": "^5.1.0",
