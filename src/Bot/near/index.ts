@@ -70,8 +70,8 @@ export class NearBot {
         switch (params.protocol) {
             case Protocol.Tonic:
                 return TonicBot.create(params);
-            case Protocol.Ref:
-                return RefBot.create(params);
+            // case Protocol.Ref:
+            //     return RefBot.create(params);
             default:
                 throw `Create near bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }

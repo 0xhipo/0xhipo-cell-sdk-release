@@ -25,3 +25,16 @@ export interface Grid {
     price: Decimal;
     size: Decimal;
 }
+
+export interface DualInvestment {
+    baseBalance: Decimal;
+    quoteBalance: Decimal;
+}
+
+export interface GetDualInvestmentParams {
+    quoteBalance: Decimal;
+    lowerPrice: Decimal;
+    upperPrice: Decimal;
+    gridNumber: Decimal;
+    marketPrice: Decimal;
+}

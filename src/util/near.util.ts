@@ -61,6 +61,7 @@ export async function nearSendTransactionPayload(
     accountId: string,
     privateKeyStr: string,
     networkId: NearNetworkId = NearNetworkId.mainnet,
+    addedNonce = new BN(1),
 ): Promise<FinalExecutionOutcome> {
     const nearEnv = getNearEnvConfig(networkId) as NearEnvConfig;
     const keyPair = KeyPair.fromString(privateKeyStr);
@@ -74,7 +75,7 @@ export async function nearSendTransactionPayload(
 
     const block = await account.connection.provider.block({ finality: 'final' });
     const blockHash = block.header.hash;
-    const nonce = accessKey.nonce.add(new BN(1));
+    const nonce = accessKey.nonce.add(addedNonce);
 
     const [_, signedTx] = await signTransaction(
         payload.receiverId,

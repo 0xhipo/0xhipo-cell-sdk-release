@@ -1,4 +1,4 @@
-import { BotType, GetGridsParams, Grid, GridRebalanceParams } from '../type';
+import { DualInvestment, BotType, GetDualInvestmentParams, GetGridsParams, Grid, GridRebalanceParams } from '../type';
 import Decimal from 'decimal.js';
 import { ZERO_DECIMAL } from '../constant';
 
@@ -14,7 +14,7 @@ export class GridStrategy {
         const priceInterval = params.upperPrice.sub(params.lowerPrice).div(params.gridNumber.sub(new Decimal(1)));
 
         const grids: Grid[] = [];
-        for (const gridIndex of Array(params.gridNumber).keys()) {
+        for (let gridIndex = 0; gridIndex < params.gridNumber.toNumber(); gridIndex++) {
             const gridPrice = params.lowerPrice.add(priceInterval.mul(new Decimal(gridIndex)));
             grids.push({
                 index: gridIndex,
@@ -98,5 +98,35 @@ export class GridStrategy {
             case BotType.EnhancedNeutral:
                 return ZERO_DECIMAL;
         }
+    }
+
+    /*
+     * Estimate the amount of investment required when creating a bot using dual tokens
+     * ONLY support SPOT LONG bot
+     */
+    static getDualInvestment(params: GetDualInvestmentParams): DualInvestment {
+        const grids = this.getGrids({
+            amount: new Decimal(1),
+            leverage: new Decimal(1),
+            lowerPrice: params.lowerPrice,
+            upperPrice: params.upperPrice,
+            gridNumber: params.gridNumber,
+        });
+        // number of grids which price lower than market price
+        const lowerGridsNumber = grids.filter((grid) => grid.price.lt(params.marketPrice)).length;
+
+        const quoteTokenRatio = new Decimal(lowerGridsNumber).div(params.gridNumber);
+        const baseTokenRatio = new Decimal(1).sub(quoteTokenRatio);
+        if (quoteTokenRatio.eq(ZERO_DECIMAL)) {
+            throw `Get dual investment error: zero quote token ratio`;
+        }
+
+        const baseValue = params.quoteBalance.div(quoteTokenRatio).mul(baseTokenRatio);
+        const baseBalance = baseValue.div(params.marketPrice);
+
+        return {
+            baseBalance,
+            quoteBalance: params.quoteBalance,
+        };
     }
 }

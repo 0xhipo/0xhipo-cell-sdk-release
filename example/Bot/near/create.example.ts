@@ -11,22 +11,23 @@ import { nearAccountId, nearAccountPrivateKey, nearContractId } from '../../cons
 
 async function createExample() {
     const params: CreateNearBotParams = {
-        protocol: Protocol.Ref,
-        amount: new Decimal(100),
+        protocol: Protocol.Tonic,
+        baseTokenBalance: new Decimal(1),
+        quoteTokenBalance: new Decimal(1),
         lowerPrice: new Decimal(2),
-        upperPrice: new Decimal(3),
+        upperPrice: new Decimal(3.5),
         gridNumber: new Decimal(10),
-        leverage: new Decimal(1.5),
-        market: 'ref.fakes.testnet|usdt.fakes.testnet|2000',
+        leverage: new Decimal(1),
+        market: '7Ub1tFH9hUTcS3F4PbU7PPVmXx4u11nQnBPCF3tqJgkV',
         botType: BotType.Long,
         startPrice: new Decimal(2.3),
         contractId: nearContractId,
-        networkId: NearNetworkId.testnet,
+        networkId: NearNetworkId.mainnet,
     };
     const [botIndex, payloads] = await NearBot.create(params);
 
     for (const payload of payloads) {
-        await nearSendTransactionPayload(payload, nearAccountId, nearAccountPrivateKey, NearNetworkId.testnet);
+        await nearSendTransactionPayload(payload, nearAccountId, nearAccountPrivateKey, NearNetworkId.mainnet);
     }
 }
 createExample();

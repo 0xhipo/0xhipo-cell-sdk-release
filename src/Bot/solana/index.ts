@@ -51,10 +51,10 @@ export class SolanaBot {
 
     static async create(params: CreateBotParams): Promise<[Uint8Array, PublicKey, PublicKey, TransactionPayload]> {
         switch (params.protocol) {
-            case Protocol.ZetaFuture:
-                return ZetaFutureBot.create(params);
-            case Protocol.ZetaPerp:
-                return ZetaPerpBot.create(params);
+            // case Protocol.ZetaFuture:
+            //     return ZetaFutureBot.create(params);
+            // case Protocol.ZetaPerp:
+            //     return ZetaPerpBot.create(params);
             case Protocol.Serum:
                 return SerumBot.create(params);
             default:

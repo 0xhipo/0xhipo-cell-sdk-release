@@ -4,6 +4,7 @@ export const COIN_GECKO_TOKEN_MAP = {
     USDT: 'tether',
     SOL: 'solana',
     ETH: 'ethereum',
+    wETH: 'ethereum',
     BTC: 'bitcoin',
     FTT: 'ftx-token',
     MNGO: 'mango-markets',
@@ -16,4 +17,5 @@ export const COIN_GECKO_TOKEN_MAP = {
     ADA: 'cardano',
     NEAR: 'near',
     USDC: 'usd-coin',
+    stSOL: 'lido-staked-sol',
 };

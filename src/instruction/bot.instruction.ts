@@ -26,7 +26,8 @@ export function createBotIx(params: CreateBotIxParams): TransactionInstruction {
         data: Buffer.concat([
             Buffer.from(Int8Array.from([InstructionIndex.CreateBot])),
             Buffer.concat([params.botSeed]),
-            new Numberu64(params.depositAssetQuantity.toString()).toBuffer(),
+            new Numberu64(params.depositQuoteBalance.toString()).toBuffer(),
+            new Numberu64(params.depositBaseBalance.toString()).toBuffer(),
             new Numberu64(params.lowerPrice.toString()).toBuffer(),
             new Numberu64(params.upperPrice.toString()).toBuffer(),
             new Numberu16(params.gridNum.toString()).toBuffer(),
@@ -38,6 +39,7 @@ export function createBotIx(params: CreateBotIxParams): TransactionInstruction {
             new Numberu8(params.trigger ? 1 : 0).toBuffer(),
             new Numberu8(params.isPool ? 1 : 0).toBuffer(),
             new Numberu64(params.startPrice.toString()).toBuffer(),
+            new Numberu8(params.isDualDeposit ? 1 : 0).toBuffer(),
         ]),
         keys: [
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
@@ -46,13 +48,19 @@ export function createBotIx(params: CreateBotIxParams): TransactionInstruction {
             { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
             { pubkey: params.botKey, isSigner: false, isWritable: true },
             { pubkey: params.botMintKey, isSigner: false, isWritable: true },
-            { pubkey: params.botAssetKey, isSigner: false, isWritable: true },
-            { pubkey: params.userAssetKey, isSigner: false, isWritable: true },
             { pubkey: params.userBotTokenKey, isSigner: false, isWritable: true },
-            { pubkey: params.assetPriceKey, isSigner: false, isWritable: false },
             { pubkey: params.userKey, isSigner: true, isWritable: false },
             { pubkey: params.cellCacheAccount, isSigner: false, isWritable: true },
             { pubkey: params.marketKey, isSigner: false, isWritable: false },
+            ...params.botAssetKeys.map((botAssetKey) => {
+                return { pubkey: botAssetKey, isSigner: false, isWritable: true };
+            }),
+            ...params.userAssetKeys.map((userAssetKey) => {
+                return { pubkey: userAssetKey, isSigner: false, isWritable: true };
+            }),
+            ...params.assetPriceKeys.map((assetPriceKey) => {
+                return { pubkey: assetPriceKey, isSigner: false, isWritable: false };
+            }),
         ],
         programId: params.programId,
     });
@@ -268,8 +276,6 @@ export function upgradeBotInfoIx(params: UpgradeBotInfoIxParams): TransactionIns
         data: Buffer.concat([
             Buffer.from(Int8Array.from([InstructionIndex.UpgradeBotInfo])),
             Buffer.concat([params.botSeed]),
-            new Numberu64(params.upperPrice).toBuffer(),
-            new Numberu64(params.lowerPrice).toBuffer(),
         ]),
         keys: [
             { pubkey: params.botKey, isSigner: false, isWritable: true },

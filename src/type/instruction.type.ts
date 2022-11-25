@@ -60,12 +60,16 @@ export enum InstructionIndex {
     SerumSettleFunds = 101,
     SerumCancelOrder = 102,
     SerumInitOpenOrders = 103,
-    SerumCloseOpenOrers = 104,
+    SerumCloseOpenOrders = 104,
+    SerumPoolDeposit = 105,
+    SerumPoolWithdraw = 106,
+    SerumPoolAdjustReserve = 107,
 }
 
 export interface CreateBotIxParams {
     botSeed: Uint8Array;
-    depositAssetQuantity: Decimal;
+    depositBaseBalance: Decimal;
+    depositQuoteBalance: Decimal;
     lowerPrice: Decimal;
     upperPrice: Decimal;
     gridNum: Decimal;
@@ -73,10 +77,7 @@ export interface CreateBotIxParams {
     leverage: Decimal;
     botKey: PublicKey;
     botMintKey: PublicKey;
-    botAssetKey: PublicKey;
-    userAssetKey: PublicKey;
     userBotTokenKey: PublicKey;
-    assetPriceKey: PublicKey;
     userKey: PublicKey;
     botType: BotType;
     protocol: Protocol;
@@ -85,7 +86,11 @@ export interface CreateBotIxParams {
     trigger: boolean;
     isPool: boolean;
     startPrice: Decimal;
+    isDualDeposit: boolean;
     cellCacheAccount: PublicKey;
+    botAssetKeys: PublicKey[];
+    userAssetKeys: PublicKey[];
+    assetPriceKeys: PublicKey[];
     programId: PublicKey;
 }
 
@@ -604,8 +609,6 @@ export interface CellConfigReallocIxParams {
 
 export interface UpgradeBotInfoIxParams {
     botSeed: Uint8Array;
-    upperPrice: number;
-    lowerPrice: number;
     botKey: PublicKey;
     payerKey: PublicKey;
     programId: PublicKey;
@@ -764,6 +767,7 @@ export interface SerumSettleFundsIxParams {
     userOrBotDelegateAccount: PublicKey;
     marketAccount: PublicKey;
     openOrdersAccount: PublicKey;
+    botOrWorkingCapAccount: PublicKey;
     botAccount: PublicKey;
     coinVault: PublicKey;
     coinWalletAccount: PublicKey;
@@ -783,6 +787,7 @@ export interface SerumCancelOrderIxParams {
     bidsAccount: PublicKey;
     asksAccount: PublicKey;
     openOrdersAccount: PublicKey;
+    botOrWorkingCapAccount: PublicKey;
     botAccount: PublicKey;
     eventQueueAccount: PublicKey;
     cellConfigAccount: PublicKey;
@@ -794,6 +799,7 @@ export interface SerumInitOpenOrdersIxParams {
     userOrBotDelegateAccount: PublicKey;
     marketAccount: PublicKey;
     openOrdersAccount: PublicKey;
+    botOrWorkingCapAccount: PublicKey;
     botAccount: PublicKey;
     cellConfigAccount: PublicKey;
     programId: PublicKey;
@@ -803,9 +809,69 @@ export interface SerumCloseOpenOrdersIxParams {
     botSeed: Uint8Array;
     userOrBotDelegateAccount: PublicKey;
     openOrdersAccount: PublicKey;
+    botOrWorkingCapAccount: PublicKey;
     botAccount: PublicKey;
     userAccount: PublicKey;
     marketAccount: PublicKey;
     cellConfigAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumPoolDepositIxParams {
+    botSeed: Uint8Array;
+    amount: Decimal;
+    botAccount: PublicKey;
+    botMintAccount: PublicKey;
+    investorAccount: PublicKey;
+    investorAssetAccount: PublicKey;
+    investorBotTokenAccount: PublicKey;
+    botAssetAccount: PublicKey;
+    workingCapAccount: PublicKey;
+    workingCapBaseTokenAccount: PublicKey;
+    workingCapQuoteTokenAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    marketAccount: PublicKey;
+    cellCacheAccount: PublicKey;
+    baseTokenPythPriceAccount: PublicKey;
+    quoteTokenPythPriceAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumPoolWithdrawIxParams {
+    botSeed: Uint8Array;
+    amount: Decimal;
+    botAccount: PublicKey;
+    botMintAccount: PublicKey;
+    investorAccount: PublicKey;
+    investorAssetAccount: PublicKey;
+    investorBotTokenAccount: PublicKey;
+    botAssetAccount: PublicKey;
+    cellCacheAccount: PublicKey;
+    cellConfigAccount: PublicKey;
+    cellAssetAccount: PublicKey;
+    botOwnerAssetAccount: PublicKey;
+    workingCapAccount: PublicKey;
+    workingCapBaseTokenAccount: PublicKey;
+    workingCapQuoteTokenAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    marketAccount: PublicKey;
+    baseTokenPythPriceAccount: PublicKey;
+    quoteTokenPythPriceAccount: PublicKey;
+    programId: PublicKey;
+}
+
+export interface SerumPoolAdjustReserveIxParams {
+    botSeed: Uint8Array;
+    botAccount: PublicKey;
+    userOrBotDelegateAccount: PublicKey;
+    botAssetAccount: PublicKey;
+    workingCapAccount: PublicKey;
+    workingCapBaseTokenAccount: PublicKey;
+    workingCapQuoteTokenAccount: PublicKey;
+    openOrdersAccount: PublicKey;
+    marketAccount: PublicKey;
+    cellConfigAccount: PublicKey;
+    baseTokenPythPriceAccount: PublicKey;
+    quoteTokenPythPriceAccount: PublicKey;
     programId: PublicKey;
 }

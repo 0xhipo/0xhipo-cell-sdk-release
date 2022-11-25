@@ -5,7 +5,7 @@ import { SolanaEnvConfig, SolanaEnvName } from '../../type';
 export const SOLANA_ENV: { [index in SolanaEnvName]: SolanaEnvConfig } = {
     DEV: {
         programId: new PublicKey('CeLLnpHYVjZSmjfw4syfJwGyAdGtXccZiacJKybFEfHJ'),
-        adminAccount: new PublicKey('CeLLkwAYkVtFmej6PvNWXY9c1BzTCgs854nPHXqgECTd'),
+        adminAccount: new PublicKey('Aw2CnBU7xrw3UXGqCkjZc1cRfVuR5ZW9dkdFz4VAoA8d'),
     },
     ZETA: {
         programId: new PublicKey('EXQespVxq6d6BTXAU1fE5HyqKG5vxgRoYnq8pHNPVdyA'),
@@ -17,7 +17,7 @@ export const SOLANA_ENV: { [index in SolanaEnvName]: SolanaEnvConfig } = {
     },
     PROD: {
         programId: new PublicKey('E88JZpoDm5M7xSpgxdQ3aSbiiZgWuLBPgNQSehWcLJM4'),
-        adminAccount: new PublicKey('CeLLkwAYkVtFmej6PvNWXY9c1BzTCgs854nPHXqgECTd'),
+        adminAccount: new PublicKey('Aw2CnBU7xrw3UXGqCkjZc1cRfVuR5ZW9dkdFz4VAoA8d'),
     },
     PROD_V2: {
         programId: new PublicKey('8EndYA8H6DBKdrGJNQ6JqckzZAVPMfoYAmaAPwhC9kar'),

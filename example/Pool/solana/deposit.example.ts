@@ -1,6 +1,6 @@
 import { SolanaPool, DepositPoolParams, sendSolanaPayload } from '../../../src';
 import Decimal from 'decimal.js';
-import {solanaBotSeed, solanaConnection, solanaEnv, solanaWallet} from '../../constant.example';
+import { solanaBotSeed, solanaConnection, solanaEnv, solanaWallet } from '../../constant.example';
 
 async function depositExample() {
     const pool = await SolanaPool.load(solanaConnection, solanaBotSeed, solanaEnv.programId);

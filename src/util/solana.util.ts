@@ -372,3 +372,9 @@ export async function redeemAllFromBot(
     );
     return payload;
 }
+
+export function getSerumPoolWorkingCapKey(botKey: PublicKey, programId: PublicKey) {
+    return PublicKey.findProgramAddress([botKey.toBuffer(), Buffer.from('working-cap', 'utf-8')], programId).then(
+        (res) => res[0],
+    );
+}

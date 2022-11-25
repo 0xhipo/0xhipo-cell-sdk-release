@@ -1,7 +1,6 @@
 import {
     BotInfo,
     CancelNearOrderParams,
-    CreateNearBotParams,
     GetNearBotInfoParams,
     GetNearOpenOrdersParams,
     NearTokenConfig,
@@ -11,11 +10,7 @@ import {
     PlaceNearOrderParams,
     RefPoolConfig,
 } from '../../type';
-import { NearBot } from './index';
 import {
-    botProtocolEnumToStr,
-    botTypeEnumToStr,
-    decimalToBN,
     getMarketPrice,
     getNearTokenBalance,
     getNearTokenConfigBySymbol,
@@ -27,8 +22,7 @@ import {
     uiToNative,
 } from '../../util';
 import { Action, functionCall } from 'near-api-js/lib/transaction';
-import { BOT_CONTRACT_STORAGE_NEAR, DEFAULT_GAS, ONE_NEAR_YOCTO, REF_CONTRACT_ID, ZERO_BN } from '../../constant';
-import BN from 'bn.js';
+import { DEFAULT_GAS, REF_CONTRACT_ID, ZERO_BN } from '../../constant';
 import Decimal from 'decimal.js';
 
 export class RefBot {
@@ -39,132 +33,132 @@ export class RefBot {
      * 4. ref storage deposit
      * returns [botIndex, transactionPayloads]
      */
-    static async create(params: CreateNearBotParams): Promise<[number, NearTransactionPayload[]]> {
-        const payloads: NearTransactionPayload[] = [];
-        const botIndex = await NearBot.loadAll(params.contractId, params.networkId).then((res) => res.length);
-        const botContractId = `${botIndex}.${params.contractId}`;
-        console.log(`Create bot ${botContractId}`);
-
-        const poolConfig = getRefPoolConfig(params.market) as RefPoolConfig;
-        const tokenXConfig = getNearTokenConfigBySymbol(poolConfig.tokenXSymbol) as NearTokenConfig;
-        const tokenYConfig = getNearTokenConfigBySymbol(poolConfig.tokenYSymbol) as NearTokenConfig;
-        const wNEARTokenConfig = getNearTokenConfigBySymbol('wNEAR') as NearTokenConfig;
-
-        // 1. create bot
-        payloads.push({
-            receiverId: params.contractId,
-            actions: [
-                functionCall(
-                    'create_bot',
-                    {
-                        deposit_asset_quantity: uiToNative(params.amount, tokenYConfig.decimals).toFixed(),
-                        lower_price: uiToNative(params.lowerPrice, tokenYConfig.decimals).toFixed(),
-                        upper_price: uiToNative(params.upperPrice, tokenYConfig.decimals).toFixed(),
-                        grid_num: params.gridNumber.toNumber(),
-                        leverage: uiToNative(params.leverage, 2).toNumber(),
-                        market_id: params.market,
-                        protocol: botProtocolEnumToStr(params.protocol),
-                        bot_type: botTypeEnumToStr(params.botType),
-                        start_price: uiToNative(params.startPrice, tokenYConfig.decimals).toFixed(),
-                    },
-                    DEFAULT_GAS,
-                    ONE_NEAR_YOCTO.muln(BOT_CONTRACT_STORAGE_NEAR),
-                ),
-            ],
-        });
-
-        //2. token Y storage deposit & deposit to bot (if NEAR register wNEAR and deposit NEAR)
-        if (tokenYConfig.symbol == 'NEAR') {
-            console.log(`Register in wNEAR & deposit ${params.amount} NEAR to bot`);
-            payloads.push({
-                receiverId: wNEARTokenConfig.symbol,
-                actions: [
-                    functionCall(
-                        'storage_deposit',
-                        {
-                            account_id: botContractId,
-                            registration_only: true,
-                        },
-                        DEFAULT_GAS.divn(2),
-                        // 0.0125 NEAR
-                        new BN('12500000000000000000000'),
-                    ),
-                ],
-            });
-            payloads.push({
-                receiverId: botContractId,
-                actions: [
-                    functionCall('deposit_near', {}, DEFAULT_GAS, ONE_NEAR_YOCTO.mul(decimalToBN(params.amount))),
-                ],
-            });
-        } else {
-            console.log(`Register in ${tokenYConfig.symbol} & deposit ${params.amount} ${tokenYConfig.symbol} to bot`);
-            payloads.push({
-                receiverId: tokenYConfig.accountId,
-                actions: [
-                    functionCall(
-                        'storage_deposit',
-                        {
-                            account_id: botContractId,
-                            registration_only: true,
-                        },
-                        DEFAULT_GAS.divn(2),
-                        // 0.0125 NEAR
-                        new BN('12500000000000000000000'),
-                    ),
-                    functionCall(
-                        'ft_transfer_call',
-                        {
-                            receiver_id: botContractId,
-                            amount: uiToNative(params.amount, tokenYConfig.decimals).toFixed(),
-                            msg: botIndex.toString(),
-                        },
-                        DEFAULT_GAS.divn(2),
-                        new BN(1),
-                    ),
-                ],
-            });
-        }
-
-        //3. token X storage deposit (if NEAR register wNEAR)
-        const tokenXRegisterAccountId =
-            tokenXConfig.symbol == 'NEAR' ? wNEARTokenConfig.accountId : tokenXConfig.accountId;
-        console.log(`Register in ${tokenXRegisterAccountId}`);
-        payloads.push({
-            receiverId: tokenXRegisterAccountId,
-            actions: [
-                functionCall(
-                    'storage_deposit',
-                    {
-                        account_id: botContractId,
-                        registration_only: true,
-                    },
-                    DEFAULT_GAS.divn(2),
-                    // 0.0125 NEAR
-                    new BN('12500000000000000000000'),
-                ),
-            ],
-        });
-
-        //4. ref storage deposit
-        console.log(`register in ref`);
-        payloads.push({
-            receiverId: REF_CONTRACT_ID,
-            actions: [
-                functionCall(
-                    'storage_deposit',
-                    {
-                        account_id: botContractId,
-                        registration_only: false,
-                    },
-                    DEFAULT_GAS,
-                    // deposit 0.5 NEAR
-                    ONE_NEAR_YOCTO.divn(2),
-                ),
-            ],
-        });
-        return [botIndex, payloads];
-    }
+    // static async create(params: CreateNearBotParams): Promise<[number, NearTransactionPayload[]]> {
+    //     const payloads: NearTransactionPayload[] = [];
+    //     const botIndex = await NearBot.loadAll(params.contractId, params.networkId).then((res) => res.length);
+    //     const botContractId = `${botIndex}.${params.contractId}`;
+    //     console.log(`Create bot ${botContractId}`);
+    //
+    //     const poolConfig = getRefPoolConfig(params.market) as RefPoolConfig;
+    //     const tokenXConfig = getNearTokenConfigBySymbol(poolConfig.tokenXSymbol) as NearTokenConfig;
+    //     const tokenYConfig = getNearTokenConfigBySymbol(poolConfig.tokenYSymbol) as NearTokenConfig;
+    //     const wNEARTokenConfig = getNearTokenConfigBySymbol('wNEAR') as NearTokenConfig;
+    //
+    //     // 1. create bot
+    //     payloads.push({
+    //         receiverId: params.contractId,
+    //         actions: [
+    //             functionCall(
+    //                 'create_bot',
+    //                 {
+    //                     deposit_asset_quantity: uiToNative(params.amount, tokenYConfig.decimals).toFixed(),
+    //                     lower_price: uiToNative(params.lowerPrice, tokenYConfig.decimals).toFixed(),
+    //                     upper_price: uiToNative(params.upperPrice, tokenYConfig.decimals).toFixed(),
+    //                     grid_num: params.gridNumber.toNumber(),
+    //                     leverage: uiToNative(params.leverage, 2).toNumber(),
+    //                     market_id: params.market,
+    //                     protocol: botProtocolEnumToStr(params.protocol),
+    //                     bot_type: botTypeEnumToStr(params.botType),
+    //                     start_price: uiToNative(params.startPrice, tokenYConfig.decimals).toFixed(),
+    //                 },
+    //                 DEFAULT_GAS,
+    //                 ONE_NEAR_YOCTO.muln(BOT_CONTRACT_STORAGE_NEAR),
+    //             ),
+    //         ],
+    //     });
+    //
+    //     //2. token Y storage deposit & deposit to bot (if NEAR register wNEAR and deposit NEAR)
+    //     if (tokenYConfig.symbol == 'NEAR') {
+    //         console.log(`Register in wNEAR & deposit ${params.amount} NEAR to bot`);
+    //         payloads.push({
+    //             receiverId: wNEARTokenConfig.symbol,
+    //             actions: [
+    //                 functionCall(
+    //                     'storage_deposit',
+    //                     {
+    //                         account_id: botContractId,
+    //                         registration_only: true,
+    //                     },
+    //                     DEFAULT_GAS.divn(2),
+    //                     // 0.0125 NEAR
+    //                     new BN('12500000000000000000000'),
+    //                 ),
+    //             ],
+    //         });
+    //         payloads.push({
+    //             receiverId: botContractId,
+    //             actions: [
+    //                 functionCall('deposit_near', {}, DEFAULT_GAS, ONE_NEAR_YOCTO.mul(decimalToBN(params.amount))),
+    //             ],
+    //         });
+    //     } else {
+    //         console.log(`Register in ${tokenYConfig.symbol} & deposit ${params.amount} ${tokenYConfig.symbol} to bot`);
+    //         payloads.push({
+    //             receiverId: tokenYConfig.accountId,
+    //             actions: [
+    //                 functionCall(
+    //                     'storage_deposit',
+    //                     {
+    //                         account_id: botContractId,
+    //                         registration_only: true,
+    //                     },
+    //                     DEFAULT_GAS.divn(2),
+    //                     // 0.0125 NEAR
+    //                     new BN('12500000000000000000000'),
+    //                 ),
+    //                 functionCall(
+    //                     'ft_transfer_call',
+    //                     {
+    //                         receiver_id: botContractId,
+    //                         amount: uiToNative(params.amount, tokenYConfig.decimals).toFixed(),
+    //                         msg: botIndex.toString(),
+    //                     },
+    //                     DEFAULT_GAS.divn(2),
+    //                     new BN(1),
+    //                 ),
+    //             ],
+    //         });
+    //     }
+    //
+    //     //3. token X storage deposit (if NEAR register wNEAR)
+    //     const tokenXRegisterAccountId =
+    //         tokenXConfig.symbol == 'NEAR' ? wNEARTokenConfig.accountId : tokenXConfig.accountId;
+    //     console.log(`Register in ${tokenXRegisterAccountId}`);
+    //     payloads.push({
+    //         receiverId: tokenXRegisterAccountId,
+    //         actions: [
+    //             functionCall(
+    //                 'storage_deposit',
+    //                 {
+    //                     account_id: botContractId,
+    //                     registration_only: true,
+    //                 },
+    //                 DEFAULT_GAS.divn(2),
+    //                 // 0.0125 NEAR
+    //                 new BN('12500000000000000000000'),
+    //             ),
+    //         ],
+    //     });
+    //
+    //     //4. ref storage deposit
+    //     console.log(`register in ref`);
+    //     payloads.push({
+    //         receiverId: REF_CONTRACT_ID,
+    //         actions: [
+    //             functionCall(
+    //                 'storage_deposit',
+    //                 {
+    //                     account_id: botContractId,
+    //                     registration_only: false,
+    //                 },
+    //                 DEFAULT_GAS,
+    //                 // deposit 0.5 NEAR
+    //                 ONE_NEAR_YOCTO.divn(2),
+    //             ),
+    //         ],
+    //     });
+    //     return [botIndex, payloads];
+    // }
 
     static async getBotInfo(params: GetNearBotInfoParams): Promise<BotInfo> {
         const poolConfig = getRefPoolConfig(params.market) as RefPoolConfig;

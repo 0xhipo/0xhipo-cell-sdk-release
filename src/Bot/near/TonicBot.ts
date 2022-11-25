@@ -20,6 +20,7 @@ import { functionCall } from 'near-api-js/lib/transaction';
 import {
     botProtocolEnumToStr,
     botTypeEnumToStr,
+    decimalToBN,
     getMarketPrice,
     getNearTokenBalance,
     getNearTokenConfigBySymbol,
@@ -46,9 +47,9 @@ export class TonicBot {
     /*
      * 1. Create bot (need deposit NEAR to deploy bot contract, see BOT_CONTRACT_STORAGE_NEAR)
      * 2. Register bot in quote ft & deposit quote ft to bot
-     * 3. Register bot in base ft (if base not NEAR)
+     * 3. Register bot in base ft & deposit base ft to bot (if NEAR deposit directly)
      * 4. Register bot in tonic
-     * 5. Deposit quote ft to tonic
+     * 5. Deposit quote & base to tonic
      * returns [botIndex, transactionPayloads]
      */
     static async create(params: CreateNearBotParams): Promise<[number, NearTransactionPayload[]]> {
@@ -59,6 +60,11 @@ export class TonicBot {
         const marketConfig = getTonicMarketConfig(params.market) as TonicMarketConfig;
         const baseTokenConfig = getNearTokenConfigBySymbol(marketConfig.baseSymbol) as NearTokenConfig;
         const quoteTokenConfig = getNearTokenConfigBySymbol(marketConfig.quoteSymbol) as NearTokenConfig;
+        const [basePrice, quotePrice] = await Promise.all([
+            getMarketPrice(baseTokenConfig.symbol),
+            getMarketPrice(quoteTokenConfig.symbol),
+        ]);
+        const botValue = basePrice.mul(params.baseTokenBalance).add(quotePrice.mul(params.quoteTokenBalance));
 
         // 1. create bot
         console.log(`Create bot ${botContractId}`);
@@ -68,7 +74,7 @@ export class TonicBot {
                 functionCall(
                     'create_bot',
                     {
-                        deposit_asset_quantity: uiToNative(params.amount, quoteTokenConfig.decimals).toFixed(),
+                        deposit_asset_quantity: uiToNative(botValue, quoteTokenConfig.decimals).toFixed(),
                         lower_price: uiToNative(params.lowerPrice, quoteTokenConfig.decimals).toFixed(),
                         upper_price: uiToNative(params.upperPrice, quoteTokenConfig.decimals).toFixed(),
                         grid_num: params.gridNumber.toNumber(),
@@ -85,11 +91,8 @@ export class TonicBot {
         });
 
         // 2. Register bot in quote ft & deposit quote ft to bot
-        //  TODO NEAR as quote token
-        console.log(
-            `Register ${botContractId} in ${quoteTokenConfig.symbol} & Deposit ${params.amount} ${quoteTokenConfig.symbol} to bot`,
-        );
-        payloads.push({
+        console.log(`Register ${botContractId} in ${quoteTokenConfig.symbol}`);
+        const depositQuoteToBotPayload: NearTransactionPayload = {
             receiverId: quoteTokenConfig.accountId,
             actions: [
                 functionCall(
@@ -102,23 +105,29 @@ export class TonicBot {
                     // 0.0125 NEAR
                     new BN('12500000000000000000000'),
                 ),
+            ],
+        };
+        if (params.quoteTokenBalance.gt(ZERO_DECIMAL)) {
+            console.log(`Deposit ${params.quoteTokenBalance} ${quoteTokenConfig.symbol} to bot`);
+            depositQuoteToBotPayload.actions.push(
                 functionCall(
                     'ft_transfer_call',
                     {
                         receiver_id: botContractId,
-                        amount: uiToNative(params.amount, quoteTokenConfig.decimals).toFixed(),
+                        amount: uiToNative(params.quoteTokenBalance, quoteTokenConfig.decimals).toFixed(),
                         msg: botIndex.toString(),
                     },
                     DEFAULT_GAS.divn(2),
                     new BN(1),
                 ),
-            ],
-        });
+            );
+        }
+        payloads.push(depositQuoteToBotPayload);
 
-        // 3. Register bot in base ft (if base not NEAR)
+        // 3. Register bot in base ft & deposit base ft to bot
         if (baseTokenConfig.symbol != 'NEAR') {
             console.log(`Register ${botContractId} in ${baseTokenConfig.symbol}`);
-            payloads.push({
+            const depositBaseToBotPayload: NearTransactionPayload = {
                 receiverId: baseTokenConfig.accountId,
                 actions: [
                     functionCall(
@@ -130,6 +139,35 @@ export class TonicBot {
                         DEFAULT_GAS.divn(2),
                         // 0.0125 NEAR
                         new BN('12500000000000000000000'),
+                    ),
+                ],
+            };
+            if (params.baseTokenBalance.gt(ZERO_DECIMAL)) {
+                console.log(`Deposit ${params.baseTokenBalance} ${baseTokenConfig.symbol} to bot`);
+                depositBaseToBotPayload.actions.push(
+                    functionCall(
+                        'ft_transfer_call',
+                        {
+                            receiver_id: botContractId,
+                            amount: uiToNative(params.baseTokenBalance, baseTokenConfig.decimals).toFixed(),
+                            msg: botIndex.toString(),
+                        },
+                        DEFAULT_GAS.divn(2),
+                        new BN(1),
+                    ),
+                );
+            }
+            payloads.push(depositBaseToBotPayload);
+        } else {
+            console.log(`Deposit ${params.baseTokenBalance} NEAR to bot`);
+            payloads.push({
+                receiverId: botContractId,
+                actions: [
+                    functionCall(
+                        'deposit_near',
+                        {},
+                        DEFAULT_GAS,
+                        ONE_NEAR_YOCTO.mul(decimalToBN(params.baseTokenBalance)),
                     ),
                 ],
             });
@@ -153,22 +191,54 @@ export class TonicBot {
             ],
         });
 
-        // 5. Deposit quote ft to tonic
-        console.log(`Deposit ${params.amount} ${quoteTokenConfig.symbol} to tonic`);
-        payloads.push({
+        // 5. Deposit quote & base to tonic
+        const depositToTonicPayload: NearTransactionPayload = {
             receiverId: botContractId,
-            actions: [
+            actions: [],
+        };
+        if (params.quoteTokenBalance.gt(ZERO_DECIMAL)) {
+            console.log(`Deposit ${params.quoteTokenBalance} ${quoteTokenConfig.symbol} to tonic`);
+            depositToTonicPayload.actions.push(
                 functionCall(
                     'deposit_ft_to_tonic',
                     {
                         token_id: quoteTokenConfig.accountId,
-                        deposit_amount: uiToNative(params.amount, 6).toFixed(),
+                        deposit_amount: uiToNative(params.quoteTokenBalance, 6).toFixed(),
                     },
-                    DEFAULT_GAS,
+                    DEFAULT_GAS.divn(2),
                     ZERO_BN,
                 ),
-            ],
-        });
+            );
+        }
+        if (params.baseTokenBalance.gt(ZERO_DECIMAL)) {
+            if (baseTokenConfig.symbol != 'NEAR') {
+                console.log(`Deposit ${params.baseTokenBalance} ${baseTokenConfig.symbol} to tonic`);
+                depositToTonicPayload.actions.push(
+                    functionCall(
+                        'deposit_ft_to_tonic',
+                        {
+                            token_id: baseTokenConfig.accountId,
+                            deposit_amount: uiToNative(params.baseTokenBalance, baseTokenConfig.decimals).toFixed(),
+                        },
+                        DEFAULT_GAS.divn(2),
+                        ZERO_BN,
+                    ),
+                );
+            } else {
+                console.log(`Deposit ${params.baseTokenBalance} NEAR to tonic`);
+                depositToTonicPayload.actions.push(
+                    functionCall(
+                        'deposit_near_to_tonic',
+                        {
+                            deposit_amount: uiToNative(params.baseTokenBalance, baseTokenConfig.decimals).toFixed(),
+                        },
+                        DEFAULT_GAS.divn(2),
+                        ZERO_BN,
+                    ),
+                );
+            }
+        }
+        payloads.push(depositToTonicPayload);
         return [botIndex, payloads];
     }
 

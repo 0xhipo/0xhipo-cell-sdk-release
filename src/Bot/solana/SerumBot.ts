@@ -53,20 +53,32 @@ export class SerumBot {
      * returns [botSeed, dexAccountKey, orderOwnerKey, txPayload]
      */
     static async create(params: CreateBotParams): Promise<[Uint8Array, PublicKey, PublicKey, TransactionPayload]> {
-        const [botSeed, botKey, botMintKey] = await genValidBotAccount(params.programId);
         const marketConfig = getSerumMarketConfig(params.marketKey) as SerumMarketConfig;
         const baseTokenConfig = getTokenConfigBySymbol(marketConfig.baseSymbol) as SolanaTokenConfig;
         const quoteTokenConfig = getTokenConfigBySymbol(marketConfig.quoteSymbol) as SolanaTokenConfig;
 
+        const [botSeed, botKey, botMintKey] = await genValidBotAccount(params.programId);
+        const ownerBotMintATA = await getATAKey(params.botOwner, botMintKey);
+        const serumOpenOrdersAccountKey = await getSerumOpenOrdersAccountKey(botKey, params.programId);
         const cellConfigKey = await getCellConfigAccountKey(params.programId);
         const cellCacheKey = await getCellCacheKey(botKey, params.botOwner, params.programId);
 
-        const ownerUSDCATA = await getATAKey(params.botOwner, quoteTokenConfig.mintKey);
-        const ownerBotMintATA = await getATAKey(params.botOwner, botMintKey);
-        const botQuoteTokenATA = await getATAKey(botKey, quoteTokenConfig.mintKey);
-        const botBaseTokenATA = await getATAKey(botKey, baseTokenConfig.mintKey);
+        const isDualDeposit =
+            !params.depositBaseBalance.eq(ZERO_DECIMAL) && !params.depositQuoteBalance.eq(ZERO_DECIMAL);
 
-        const serumOpenOrdersAccountKey = await getSerumOpenOrdersAccountKey(botKey, params.programId);
+        const botBaseTokenATA = await getATAKey(botKey, baseTokenConfig.mintKey);
+        const botQuoteTokenATA = await getATAKey(botKey, quoteTokenConfig.mintKey);
+        const userBaseTokenATA = await getATAKey(params.botOwner, baseTokenConfig.mintKey);
+        const userQuoteTokenATA = await getATAKey(params.botOwner, quoteTokenConfig.mintKey);
+
+        const botAssetKeys: PublicKey[] = [botQuoteTokenATA];
+        const userAssetKeys: PublicKey[] = [userQuoteTokenATA];
+        const assetPriceKeys: PublicKey[] = [quoteTokenConfig.pythPriceKey];
+        if (!params.depositBaseBalance.eq(ZERO_DECIMAL)) {
+            botAssetKeys.push(botBaseTokenATA);
+            userAssetKeys.push(userBaseTokenATA);
+            assetPriceKeys.push(baseTokenConfig.pythPriceKey);
+        }
 
         const payload: TransactionPayload = {
             instructions: [
@@ -84,18 +96,17 @@ export class SerumBot {
                 }),
                 createBotIx({
                     botSeed,
-                    depositAssetQuantity: uiToNative(params.depositAssetQuantity, 6),
+                    depositBaseBalance: uiToNative(params.depositBaseBalance, baseTokenConfig.decimals),
+                    depositQuoteBalance: uiToNative(params.depositQuoteBalance, quoteTokenConfig.decimals),
                     lowerPrice: uiToNative(params.lowerPrice, 6),
                     upperPrice: uiToNative(params.upperPrice, 6),
                     gridNum: params.gridNum,
                     marketKey: params.marketKey,
                     leverage: uiToNative(params.leverage, 2),
+                    isDualDeposit,
                     botKey,
                     botMintKey,
-                    botAssetKey: botQuoteTokenATA,
-                    userAssetKey: ownerUSDCATA,
                     userBotTokenKey: ownerBotMintATA,
-                    assetPriceKey: quoteTokenConfig.pythPriceKey,
                     userKey: params.botOwner,
                     protocol: params.protocol,
                     botType: params.botType,
@@ -105,6 +116,9 @@ export class SerumBot {
                     isPool: false,
                     startPrice: uiToNative(params.startPrice, 6),
                     cellCacheAccount: cellCacheKey,
+                    botAssetKeys,
+                    userAssetKeys,
+                    assetPriceKeys,
                     programId: params.programId,
                 }),
                 serumInitOpenOrdersIx({
@@ -113,6 +127,7 @@ export class SerumBot {
                     marketAccount: params.marketKey,
                     openOrdersAccount: serumOpenOrdersAccountKey,
                     botAccount: botKey,
+                    botOrWorkingCapAccount: botKey,
                     cellConfigAccount: cellConfigKey,
                     programId: params.programId,
                 }),
@@ -205,6 +220,8 @@ export class SerumBot {
             .map((i) => {
                 return {
                     price: new Decimal(i['price']),
+                    // TODO 1. open order size decimals convert?
+                    // TODO 2. buy / sell order size transfer(source token amount)?
                     size: new Decimal(i['size']),
                     side: i['side'] == 'buy' ? OrderSide.Bid : OrderSide.Ask,
                     orderId: i['orderId'].toString(),
@@ -285,6 +302,7 @@ export class SerumBot {
                     bidsAccount: marketConfig.bids,
                     asksAccount: marketConfig.asks,
                     openOrdersAccount: openOrdersAccountKey,
+                    botOrWorkingCapAccount: botKey,
                     botAccount: botKey,
                     eventQueueAccount: marketConfig.eventQueue,
                     cellConfigAccount: cellConfigKey,
@@ -295,6 +313,7 @@ export class SerumBot {
         };
     }
 
+    // TODO market order price size adjustment
     static async closeMarket(params: CloseSolanaBotMarketParams): Promise<TransactionPayload | undefined> {
         const botInfo = await this.getBotInfo({
             protocol: params.protocol,
@@ -387,6 +406,7 @@ export class SerumBot {
                         userOrBotDelegateAccount: params.owner,
                         marketAccount: params.marketKey,
                         openOrdersAccount: openOrdersAccountKey,
+                        botOrWorkingCapAccount: botKey,
                         botAccount: botKey,
                         coinVault: marketConfig.baseVault,
                         coinWalletAccount: botBaseATA,
@@ -400,6 +420,7 @@ export class SerumBot {
                         botSeed: params.botSeed,
                         userOrBotDelegateAccount: params.owner,
                         openOrdersAccount: openOrdersAccountKey,
+                        botOrWorkingCapAccount: botKey,
                         botAccount: botKey,
                         userAccount: params.owner,
                         marketAccount: params.marketKey,

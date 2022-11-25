@@ -60,7 +60,8 @@ export class BotAccountLayout extends Structure {
                 u16('gridNumber'),
                 publicKeyLayout('market'),
                 u16('leverage'),
-                seq(u64(), 15, 'depositedAssetsQuantity'),
+                seq(u64(), 17, 'depositedAssetsQuantity'),
+                seq(u8(), 72, 'padding2'),
                 u8('protocol'),
                 u8('type'),
                 u8('stopTopRatio'),
@@ -72,7 +73,7 @@ export class BotAccountLayout extends Structure {
                 publicKeyLayout('referrer'),
                 u64('createTime'),
                 u8('version'),
-                seq(u8(), 59, 'padding'),
+                seq(u8(), 100, 'padding2'),
             ],
             property,
         );

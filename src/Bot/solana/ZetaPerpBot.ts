@@ -2,7 +2,6 @@ import {
     BotInfo,
     CancelOrderParams,
     CloseBotParams,
-    CreateBotParams,
     GetBotInfoParams,
     GetOpenOrdersParams,
     OpenOrder,
@@ -16,13 +15,11 @@ import {
     ZetaPerpMarketConfig,
 } from '../../type';
 import {
-    genValidBotAccount,
     getATABalance,
     getATAKey,
     getBotKeyBySeed,
     getBotZetaMarginAccountKeyBySeed,
     getBotZetaOpenOrdersAccountKey,
-    getCellCacheKey,
     getCellConfigAccountKey,
     getMarketPrice,
     getSerumOpenOrdersAccountInfo,
@@ -43,17 +40,11 @@ import { ZERO_DECIMAL, ZETA_DEX_PROGRAM_ID } from '../../constant';
 import {
     cancelZetaOrderIx,
     closeZetaOpenOrdersIx,
-    createATAIx,
-    createBotIx,
-    depositToZetaIx,
-    initZetaMarginAccountIx,
-    initZetaOpenOrdersIx,
     placeZetaPerpOrderIx,
     settleZetaMarketIx,
     stopBotIx,
     withdrawFromZetaIx,
 } from '../../instruction';
-import { PublicKey } from '@solana/web3.js';
 import { Market, Orderbook } from '@project-serum/serum';
 import Decimal from 'decimal.js';
 
@@ -61,102 +52,102 @@ export class ZetaPerpBot {
     /*
      * returns [botSeed, dexAccountKey, orderOwnerKey, txPayload]
      */
-    static async create(params: CreateBotParams): Promise<[Uint8Array, PublicKey, PublicKey, TransactionPayload]> {
-        const [botSeed, botKey, botMintKey] = await genValidBotAccount(params.programId);
-        const marketConfig = getZetaPerpMarketConfig(params.marketKey) as ZetaPerpMarketConfig;
-        const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
-        const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
-
-        const cellConfigKey = await getCellConfigAccountKey(params.programId);
-        const cellCacheKey = await getCellCacheKey(botKey, params.botOwner, params.programId);
-
-        const ownerUSDCATA = await getATAKey(params.botOwner, usdcConfig.mintKey);
-        const ownerBotMintATA = await getATAKey(params.botOwner, botMintKey);
-        const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
-
-        const dexAccountKey = await getBotZetaMarginAccountKeyBySeed(
-            botSeed,
-            assetConfig.groupAccount,
-            params.programId,
-        );
-        const orderOwnerKey = await getBotZetaOpenOrdersAccountKey(botKey, params.marketKey);
-        const zetaOpenOrdersMapKey = await getZetaOpenOrdersMapKey(orderOwnerKey).then((res) => res[0]);
-
-        const payload: TransactionPayload = {
-            instructions: [
-                createATAIx({
-                    ataKey: botUSDCATA,
-                    ownerKey: botKey,
-                    mintKey: usdcConfig.mintKey,
-                    payerKey: params.botOwner,
-                }),
-                createBotIx({
-                    botSeed,
-                    depositAssetQuantity: uiToNative(params.depositAssetQuantity, 6),
-                    lowerPrice: uiToNative(params.lowerPrice, 6),
-                    upperPrice: uiToNative(params.upperPrice, 6),
-                    gridNum: params.gridNum,
-                    marketKey: params.marketKey,
-                    leverage: uiToNative(params.leverage, 2),
-                    botKey,
-                    botMintKey,
-                    botAssetKey: botUSDCATA,
-                    userAssetKey: ownerUSDCATA,
-                    userBotTokenKey: ownerBotMintATA,
-                    assetPriceKey: usdcConfig.pythPriceKey,
-                    userKey: params.botOwner,
-                    protocol: params.protocol,
-                    botType: params.botType,
-                    stopTopRatio: params.stopTopRatio,
-                    stopBottomRatio: params.stopBottomRatio,
-                    trigger: params.trigger,
-                    isPool: false,
-                    startPrice: uiToNative(params.startPrice, 6),
-                    cellCacheAccount: cellCacheKey,
-                    programId: params.programId,
-                }),
-                initZetaMarginAccountIx({
-                    botSeed,
-                    botAccount: botKey,
-                    userOrBotDelegateAccount: params.botOwner,
-                    zetaMarginAccount: dexAccountKey,
-                    zetaAccountOwnerAccount: botKey,
-                    cellConfigAccount: cellConfigKey,
-                    zetaGroupKey: assetConfig.groupAccount,
-                    programId: params.programId,
-                }),
-                initZetaOpenOrdersIx({
-                    botSeed,
-                    botAccount: botKey,
-                    userOrBotDelegateAccount: params.botOwner,
-                    openOrdersAccount: orderOwnerKey,
-                    zetaMarginAccount: dexAccountKey,
-                    marketAccount: params.marketKey,
-                    openOrdersMapAccount: zetaOpenOrdersMapKey,
-                    cellConfigAccount: cellConfigKey,
-                    zetaGroupKey: assetConfig.groupAccount,
-                    programId: params.programId,
-                }),
-                depositToZetaIx({
-                    botSeed,
-                    amount: uiToNative(params.depositAssetQuantity, 6),
-                    botAccount: botKey,
-                    userOrBotDelegateAccount: params.botOwner,
-                    zetaMarginAccount: dexAccountKey,
-                    botTokenAccount: botUSDCATA,
-                    cellConfigAccount: cellConfigKey,
-                    zetaGroupKey: assetConfig.groupAccount,
-                    zetaVaultKey: assetConfig.vaultAccount,
-                    zetaGreeksKey: assetConfig.greeksAccount,
-                    zetaSocializedLossKey: assetConfig.socializedLossAccount,
-                    programId: params.programId,
-                }),
-            ],
-            signers: [],
-        };
-
-        return [botSeed, dexAccountKey, orderOwnerKey, payload];
-    }
+    // static async create(params: CreateBotParams): Promise<[Uint8Array, PublicKey, PublicKey, TransactionPayload]> {
+    //     const [botSeed, botKey, botMintKey] = await genValidBotAccount(params.programId);
+    //     const marketConfig = getZetaPerpMarketConfig(params.marketKey) as ZetaPerpMarketConfig;
+    //     const assetConfig = getZetaAssetConfigBySymbol(marketConfig.baseSymbol) as ZetaAssetConfig;
+    //     const usdcConfig = getTokenConfigBySymbol('USDC') as SolanaTokenConfig;
+    //
+    //     const cellConfigKey = await getCellConfigAccountKey(params.programId);
+    //     const cellCacheKey = await getCellCacheKey(botKey, params.botOwner, params.programId);
+    //
+    //     const ownerUSDCATA = await getATAKey(params.botOwner, usdcConfig.mintKey);
+    //     const ownerBotMintATA = await getATAKey(params.botOwner, botMintKey);
+    //     const botUSDCATA = await getATAKey(botKey, usdcConfig.mintKey);
+    //
+    //     const dexAccountKey = await getBotZetaMarginAccountKeyBySeed(
+    //         botSeed,
+    //         assetConfig.groupAccount,
+    //         params.programId,
+    //     );
+    //     const orderOwnerKey = await getBotZetaOpenOrdersAccountKey(botKey, params.marketKey);
+    //     const zetaOpenOrdersMapKey = await getZetaOpenOrdersMapKey(orderOwnerKey).then((res) => res[0]);
+    //
+    //     const payload: TransactionPayload = {
+    //         instructions: [
+    //             createATAIx({
+    //                 ataKey: botUSDCATA,
+    //                 ownerKey: botKey,
+    //                 mintKey: usdcConfig.mintKey,
+    //                 payerKey: params.botOwner,
+    //             }),
+    //             createBotIx({
+    //                 botSeed,
+    //                 depositAssetQuantity: uiToNative(params.depositAssetQuantity, 6),
+    //                 lowerPrice: uiToNative(params.lowerPrice, 6),
+    //                 upperPrice: uiToNative(params.upperPrice, 6),
+    //                 gridNum: params.gridNum,
+    //                 marketKey: params.marketKey,
+    //                 leverage: uiToNative(params.leverage, 2),
+    //                 botKey,
+    //                 botMintKey,
+    //                 botAssetKey: botUSDCATA,
+    //                 userAssetKey: ownerUSDCATA,
+    //                 userBotTokenKey: ownerBotMintATA,
+    //                 assetPriceKey: usdcConfig.pythPriceKey,
+    //                 userKey: params.botOwner,
+    //                 protocol: params.protocol,
+    //                 botType: params.botType,
+    //                 stopTopRatio: params.stopTopRatio,
+    //                 stopBottomRatio: params.stopBottomRatio,
+    //                 trigger: params.trigger,
+    //                 isPool: false,
+    //                 startPrice: uiToNative(params.startPrice, 6),
+    //                 cellCacheAccount: cellCacheKey,
+    //                 programId: params.programId,
+    //             }),
+    //             initZetaMarginAccountIx({
+    //                 botSeed,
+    //                 botAccount: botKey,
+    //                 userOrBotDelegateAccount: params.botOwner,
+    //                 zetaMarginAccount: dexAccountKey,
+    //                 zetaAccountOwnerAccount: botKey,
+    //                 cellConfigAccount: cellConfigKey,
+    //                 zetaGroupKey: assetConfig.groupAccount,
+    //                 programId: params.programId,
+    //             }),
+    //             initZetaOpenOrdersIx({
+    //                 botSeed,
+    //                 botAccount: botKey,
+    //                 userOrBotDelegateAccount: params.botOwner,
+    //                 openOrdersAccount: orderOwnerKey,
+    //                 zetaMarginAccount: dexAccountKey,
+    //                 marketAccount: params.marketKey,
+    //                 openOrdersMapAccount: zetaOpenOrdersMapKey,
+    //                 cellConfigAccount: cellConfigKey,
+    //                 zetaGroupKey: assetConfig.groupAccount,
+    //                 programId: params.programId,
+    //             }),
+    //             depositToZetaIx({
+    //                 botSeed,
+    //                 amount: uiToNative(params.depositAssetQuantity, 6),
+    //                 botAccount: botKey,
+    //                 userOrBotDelegateAccount: params.botOwner,
+    //                 zetaMarginAccount: dexAccountKey,
+    //                 botTokenAccount: botUSDCATA,
+    //                 cellConfigAccount: cellConfigKey,
+    //                 zetaGroupKey: assetConfig.groupAccount,
+    //                 zetaVaultKey: assetConfig.vaultAccount,
+    //                 zetaGreeksKey: assetConfig.greeksAccount,
+    //                 zetaSocializedLossKey: assetConfig.socializedLossAccount,
+    //                 programId: params.programId,
+    //             }),
+    //         ],
+    //         signers: [],
+    //     };
+    //
+    //     return [botSeed, dexAccountKey, orderOwnerKey, payload];
+    // }
 
     static async stop(params: StopBotParams): Promise<TransactionPayload> {
         const marketConfig = getZetaPerpMarketConfig(params.marketKey) as ZetaPerpMarketConfig;

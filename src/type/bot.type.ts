@@ -80,7 +80,8 @@ export interface SerumOpenOrdersAccountInfo {
 
 export interface CreateBotParams {
     botOwner: PublicKey;
-    depositAssetQuantity: Decimal;
+    depositBaseBalance: Decimal;
+    depositQuoteBalance: Decimal;
     lowerPrice: Decimal;
     upperPrice: Decimal;
     gridNum: Decimal;
@@ -194,7 +195,8 @@ export interface NearBotInfo {
 
 export interface CreateNearBotParams {
     protocol: Protocol;
-    amount: Decimal;
+    baseTokenBalance: Decimal;
+    quoteTokenBalance: Decimal;
     lowerPrice: Decimal;
     upperPrice: Decimal;
     gridNumber: Decimal;

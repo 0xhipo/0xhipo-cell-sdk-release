@@ -1,5 +1,5 @@
 import { SolanaPool, AdjustPoolReserveParams, sendSolanaPayload } from '../../../src';
-import {solanaBotSeed, solanaConnection, solanaEnv, solanaWallet} from '../../constant.example';
+import { solanaBotSeed, solanaConnection, solanaEnv, solanaWallet } from '../../constant.example';
 
 async function adjustReserveExample() {
     const pool = await SolanaPool.load(solanaConnection, solanaBotSeed, solanaEnv.programId);

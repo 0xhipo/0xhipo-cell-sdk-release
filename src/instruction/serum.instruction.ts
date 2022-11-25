@@ -4,6 +4,9 @@ import {
     SerumCloseOpenOrdersIxParams,
     SerumInitOpenOrdersIxParams,
     SerumPlaceOrderIxParams,
+    SerumPoolAdjustReserveIxParams,
+    SerumPoolDepositIxParams,
+    SerumPoolWithdrawIxParams,
     SerumSettleFundsIxParams,
 } from '../type';
 import { SystemProgram, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
@@ -58,6 +61,7 @@ export function serumSettleFundsIx(params: SerumSettleFundsIxParams): Transactio
             { pubkey: params.marketAccount, isSigner: false, isWritable: true },
             { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
             { pubkey: params.openOrdersAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botOrWorkingCapAccount, isSigner: false, isWritable: true },
             { pubkey: params.botAccount, isSigner: false, isWritable: true },
             { pubkey: params.coinVault, isSigner: false, isWritable: true },
             { pubkey: params.coinWalletAccount, isSigner: false, isWritable: true },
@@ -85,6 +89,7 @@ export function serumCancelOrderIx(params: SerumCancelOrderIxParams): Transactio
             { pubkey: params.bidsAccount, isSigner: false, isWritable: true },
             { pubkey: params.asksAccount, isSigner: false, isWritable: true },
             { pubkey: params.openOrdersAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botOrWorkingCapAccount, isSigner: false, isWritable: false },
             { pubkey: params.botAccount, isSigner: false, isWritable: false },
             { pubkey: params.eventQueueAccount, isSigner: false, isWritable: true },
             { pubkey: params.cellConfigAccount, isSigner: false, isWritable: false },
@@ -104,6 +109,7 @@ export function serumInitOpenOrdersIx(params: SerumInitOpenOrdersIxParams): Tran
             { pubkey: SERUM_PROGRAM_ID, isSigner: false, isWritable: false },
             { pubkey: params.marketAccount, isSigner: false, isWritable: false },
             { pubkey: params.openOrdersAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botOrWorkingCapAccount, isSigner: false, isWritable: false },
             { pubkey: params.botAccount, isSigner: false, isWritable: false },
             { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
             { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
@@ -116,17 +122,106 @@ export function serumInitOpenOrdersIx(params: SerumInitOpenOrdersIxParams): Tran
 export function serumCloseOpenOrdersIx(params: SerumCloseOpenOrdersIxParams): TransactionInstruction {
     return new TransactionInstruction({
         data: Buffer.concat([
-            Buffer.from(Int8Array.from([InstructionIndex.SerumCloseOpenOrers])),
+            Buffer.from(Int8Array.from([InstructionIndex.SerumCloseOpenOrders])),
             Buffer.concat([params.botSeed]),
         ]),
         keys: [
             { pubkey: params.userOrBotDelegateAccount, isSigner: true, isWritable: false },
             { pubkey: SERUM_PROGRAM_ID, isSigner: false, isWritable: false },
             { pubkey: params.openOrdersAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botOrWorkingCapAccount, isSigner: false, isWritable: false },
             { pubkey: params.botAccount, isSigner: false, isWritable: false },
             { pubkey: params.userAccount, isSigner: false, isWritable: true },
             { pubkey: params.marketAccount, isSigner: false, isWritable: false },
             { pubkey: params.cellConfigAccount, isSigner: false, isWritable: false },
+        ],
+        programId: params.programId,
+    });
+}
+
+export function serumPoolDepositIx(params: SerumPoolDepositIxParams): TransactionInstruction {
+    return new TransactionInstruction({
+        data: Buffer.concat([
+            Buffer.from(Int8Array.from([InstructionIndex.SerumPoolDeposit])),
+            Buffer.concat([params.botSeed]),
+            new Numberu64(params.amount.toString()).toBuffer(),
+        ]),
+        keys: [
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            { pubkey: params.botAccount, isSigner: false, isWritable: false },
+            { pubkey: params.botMintAccount, isSigner: false, isWritable: true },
+            { pubkey: params.investorAccount, isSigner: true, isWritable: false },
+            { pubkey: params.investorAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.investorBotTokenAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.workingCapAccount, isSigner: false, isWritable: true },
+            { pubkey: params.workingCapBaseTokenAccount, isSigner: false, isWritable: false },
+            { pubkey: params.workingCapQuoteTokenAccount, isSigner: false, isWritable: false },
+            { pubkey: params.openOrdersAccount, isSigner: false, isWritable: false },
+            { pubkey: params.marketAccount, isSigner: false, isWritable: false },
+            { pubkey: SERUM_PROGRAM_ID, isSigner: false, isWritable: false },
+            { pubkey: params.cellCacheAccount, isSigner: false, isWritable: true },
+            { pubkey: params.baseTokenPythPriceAccount, isSigner: false, isWritable: false },
+            { pubkey: params.quoteTokenPythPriceAccount, isSigner: false, isWritable: false },
+        ],
+        programId: params.programId,
+    });
+}
+
+export function serumPoolWithdrawIx(params: SerumPoolWithdrawIxParams): TransactionInstruction {
+    return new TransactionInstruction({
+        data: Buffer.concat([
+            Buffer.from(Int8Array.from([InstructionIndex.SerumPoolWithdraw])),
+            Buffer.concat([params.botSeed]),
+            new Numberu64(params.amount.toString()).toBuffer(),
+        ]),
+        keys: [
+            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            { pubkey: params.botAccount, isSigner: false, isWritable: false },
+            { pubkey: params.botMintAccount, isSigner: false, isWritable: true },
+            { pubkey: params.investorAccount, isSigner: true, isWritable: false },
+            { pubkey: params.investorAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.investorBotTokenAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.cellCacheAccount, isSigner: false, isWritable: true },
+            { pubkey: params.cellConfigAccount, isSigner: false, isWritable: true },
+            { pubkey: params.cellAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.botOwnerAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.workingCapAccount, isSigner: false, isWritable: true },
+            { pubkey: params.workingCapBaseTokenAccount, isSigner: false, isWritable: false },
+            { pubkey: params.workingCapQuoteTokenAccount, isSigner: false, isWritable: false },
+            { pubkey: params.openOrdersAccount, isSigner: false, isWritable: false },
+            { pubkey: params.marketAccount, isSigner: false, isWritable: false },
+            { pubkey: SERUM_PROGRAM_ID, isSigner: false, isWritable: false },
+            { pubkey: params.baseTokenPythPriceAccount, isSigner: false, isWritable: false },
+            { pubkey: params.quoteTokenPythPriceAccount, isSigner: false, isWritable: false },
+        ],
+        programId: params.programId,
+    });
+}
+
+export function serumPoolAdjustReserveIx(params: SerumPoolAdjustReserveIxParams): TransactionInstruction {
+    return new TransactionInstruction({
+        data: Buffer.concat([
+            Buffer.from(Int8Array.from([InstructionIndex.SerumPoolAdjustReserve])),
+            Buffer.concat([params.botSeed]),
+        ]),
+        keys: [
+            { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            { pubkey: params.botAccount, isSigner: false, isWritable: true },
+            { pubkey: params.userOrBotDelegateAccount, isSigner: false, isWritable: false },
+            { pubkey: params.botAssetAccount, isSigner: false, isWritable: true },
+            { pubkey: params.workingCapAccount, isSigner: false, isWritable: true },
+            { pubkey: params.workingCapBaseTokenAccount, isSigner: false, isWritable: false },
+            { pubkey: params.workingCapQuoteTokenAccount, isSigner: false, isWritable: true },
+            { pubkey: params.openOrdersAccount, isSigner: false, isWritable: false },
+            { pubkey: params.marketAccount, isSigner: false, isWritable: false },
+            { pubkey: SERUM_PROGRAM_ID, isSigner: false, isWritable: false },
+            { pubkey: params.cellConfigAccount, isSigner: false, isWritable: true },
+            { pubkey: params.baseTokenPythPriceAccount, isSigner: false, isWritable: false },
+            { pubkey: params.quoteTokenPythPriceAccount, isSigner: false, isWritable: false },
         ],
         programId: params.programId,
     });

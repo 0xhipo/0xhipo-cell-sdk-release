@@ -137,9 +137,7 @@ export function botStatusStrToEnum(botStatus: string): BotStatus {
 }
 
 export async function getMarketPrice(symbol: string): Promise<Decimal> {
-    const coingeckoTokenId = COIN_GECKO_TOKEN_MAP[symbol.toUpperCase()]
-        ? COIN_GECKO_TOKEN_MAP[symbol.toUpperCase()]
-        : symbol.toLowerCase();
+    const coingeckoTokenId = COIN_GECKO_TOKEN_MAP[symbol] ? COIN_GECKO_TOKEN_MAP[symbol] : symbol.toLowerCase();
     const url = `https://api.coingecko.com/api/v3/coins/${coingeckoTokenId}`;
     const usdPrice = await fetch(url)
         .then((res) => res.json())

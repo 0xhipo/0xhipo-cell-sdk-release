@@ -18,6 +18,7 @@ export const PYTH_PRICE_KEY = {
     MSOL: new PublicKey('E4v1BBgoso9s64TQvmyownAVJbhbEPGyzA3qn4n46qj9'),
     GMT: new PublicKey('DZYZkJcFJThN9nZy4nK3hrHra1LaWeiyoZ9SMdLFEFpY'),
     ADA: new PublicKey('3pyn4svBbxJ9Wnn3RVeafyLWfzie6yC5eTig2S62v9SC'),
+    stSOL: new PublicKey('Bt1hEbY62aMriY1SyQqbeZbm8VmSbQVGBFzSzMuVNWzN'),
 };
 
 export const SOLANA_TOKENS: SolanaTokenConfig[] = [
@@ -125,5 +126,19 @@ export const SOLANA_TOKENS: SolanaTokenConfig[] = [
         decimals: 9,
         tokenIndex: 14,
         pythPriceKey: PYTH_PRICE_KEY.GMT,
+    },
+    {
+        name: 'wETH',
+        mintKey: new PublicKey('7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs'),
+        decimals: 8,
+        tokenIndex: 15,
+        pythPriceKey: PYTH_PRICE_KEY.ETH,
+    },
+    {
+        name: 'stSOL',
+        mintKey: new PublicKey('7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj'),
+        decimals: 9,
+        tokenIndex: 16,
+        pythPriceKey: PYTH_PRICE_KEY.stSOL,
     },
 ];
