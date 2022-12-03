@@ -44,6 +44,7 @@ export class BotAccount {
         this.createTime = bnToDecimal(decoded['createTime']);
         this.depositedAssetsQuantity = decoded['depositedAssetsQuantity'].map((i) => bnToDecimal(i));
         delete this['padding'];
+        delete this['padding2'];
     }
 }
 
@@ -61,7 +62,7 @@ export class BotAccountLayout extends Structure {
                 publicKeyLayout('market'),
                 u16('leverage'),
                 seq(u64(), 17, 'depositedAssetsQuantity'),
-                seq(u8(), 72, 'padding2'),
+                seq(u8(), 72, 'padding'),
                 u8('protocol'),
                 u8('type'),
                 u8('stopTopRatio'),

@@ -185,6 +185,9 @@ export interface NearBotAccount {
     upperPrice: Decimal;
     gridNumber: Decimal;
     leverage: Decimal;
+    referer: string;
+    perpFeeDiscount: Decimal;
+    balances: { [key: string]: Decimal };
 }
 
 export interface NearBotInfo {
@@ -204,6 +207,7 @@ export interface CreateNearBotParams {
     market: string;
     botType: BotType;
     startPrice: Decimal;
+    referer: string;
     contractId: string;
     networkId: NearNetworkId;
 }

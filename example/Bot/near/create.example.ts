@@ -12,7 +12,7 @@ import { nearAccountId, nearAccountPrivateKey, nearContractId } from '../../cons
 async function createExample() {
     const params: CreateNearBotParams = {
         protocol: Protocol.Tonic,
-        baseTokenBalance: new Decimal(1),
+        baseTokenBalance: new Decimal(0),
         quoteTokenBalance: new Decimal(1),
         lowerPrice: new Decimal(2),
         upperPrice: new Decimal(3.5),
@@ -21,6 +21,7 @@ async function createExample() {
         market: '7Ub1tFH9hUTcS3F4PbU7PPVmXx4u11nQnBPCF3tqJgkV',
         botType: BotType.Long,
         startPrice: new Decimal(2.3),
+        referer: nearAccountId,
         contractId: nearContractId,
         networkId: NearNetworkId.mainnet,
     };

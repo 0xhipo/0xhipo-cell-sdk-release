@@ -49,6 +49,27 @@ export class SolanaBot {
         };
     }
 
+    static async loadAll(connection: Connection, programId: PublicKey): Promise<BotAccount[]> {
+        const bots: BotAccount[] = [];
+
+        const accounts = await connection.getProgramAccounts(programId);
+        for (const account of accounts) {
+            if (account.account.data.length == botAccountLayout()['span']) {
+                const bot = botAccountLayout('').decode(account.account.data, 0);
+                bots.push({
+                    ...bot,
+                    amount: nativeToUi(bot.amount, 6),
+                    lowerPrice: nativeToUi(bot.lowerPrice, 6),
+                    upperPrice: nativeToUi(bot.upperPrice, 6),
+                    leverage: nativeToUi(bot.leverage, 2),
+                    startPrice: nativeToUi(bot.startPrice, 6),
+                });
+            }
+        }
+
+        return bots;
+    }
+
     static async create(params: CreateBotParams): Promise<[Uint8Array, PublicKey, PublicKey, TransactionPayload]> {
         switch (params.protocol) {
             // case Protocol.ZetaFuture:

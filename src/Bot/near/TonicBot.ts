@@ -22,7 +22,6 @@ import {
     botTypeEnumToStr,
     decimalToBN,
     getMarketPrice,
-    getNearTokenBalance,
     getNearTokenConfigBySymbol,
     getTonicMarketConfig,
     nativeToUi,
@@ -74,7 +73,7 @@ export class TonicBot {
                 functionCall(
                     'create_bot',
                     {
-                        deposit_asset_quantity: uiToNative(botValue, quoteTokenConfig.decimals).toFixed(),
+                        deposit_asset_quantity: uiToNative(botValue, quoteTokenConfig.decimals).floor().toFixed(),
                         lower_price: uiToNative(params.lowerPrice, quoteTokenConfig.decimals).toFixed(),
                         upper_price: uiToNative(params.upperPrice, quoteTokenConfig.decimals).toFixed(),
                         grid_num: params.gridNumber.toNumber(),
@@ -83,6 +82,7 @@ export class TonicBot {
                         protocol: botProtocolEnumToStr(params.protocol),
                         bot_type: botTypeEnumToStr(params.botType),
                         start_price: uiToNative(params.startPrice, quoteTokenConfig.decimals).toFixed(),
+                        referer: params.referer,
                     },
                     DEFAULT_GAS,
                     ONE_NEAR_YOCTO.muln(BOT_CONTRACT_STORAGE_NEAR),
@@ -163,12 +163,7 @@ export class TonicBot {
             payloads.push({
                 receiverId: botContractId,
                 actions: [
-                    functionCall(
-                        'deposit_near',
-                        {},
-                        DEFAULT_GAS,
-                        ONE_NEAR_YOCTO.mul(decimalToBN(params.baseTokenBalance)),
-                    ),
+                    functionCall('deposit_near', {}, DEFAULT_GAS, decimalToBN(uiToNative(params.baseTokenBalance, 24))),
                 ],
             });
         }
@@ -401,10 +396,9 @@ export class TonicBot {
     /*
      * Requirement: No open orders
      * 1. Redeem base & quote ft from tonic
-     * 2. Register wallet in base ft (if needed)
-     * 3. Redeem base ft from bot (if needed and base not NEAR)
-     * 4. Redeem quote ft from bot (if needed and quote not NEAR)
-     * 5. Close bot
+     * 2. Redeem base ft from bot
+     * 3. Redeem quote ft from bot
+     * 4. Close bot
      */
     static async close(params: CloseNearBotParms) {
         const openOrders = await this.getOpenOrders({
@@ -426,36 +420,49 @@ export class TonicBot {
         const botContractId = `${params.botIndex}.${params.contractId}`;
 
         const tonicBalances = await nearViewFunction('get_balances', { account_id: botContractId }, TONIC_CONTRACT_ID);
-        const tonicBaseBalance = tonicBalances.find((i) => i[0].replace('ft:', '') == baseTokenConfig.accountId);
-        const tonicQuoteBalance = tonicBalances.find((i) => i[0].replace('ft:', '') == quoteTokenConfig.accountId);
-        const baseBalance = tonicBaseBalance
-            ? nativeToUi(new Decimal(tonicBaseBalance[1]), baseTokenConfig.decimals)
+        const tonicNativeBaseBalance = tonicBalances.find((i) => i[0].replace('ft:', '') == baseTokenConfig.accountId);
+        const tonicNativeQuoteBalance = tonicBalances.find(
+            (i) => i[0].replace('ft:', '') == quoteTokenConfig.accountId,
+        );
+
+        const tonicBaseBalance = tonicNativeBaseBalance
+            ? nativeToUi(new Decimal(tonicNativeBaseBalance[1]), baseTokenConfig.decimals)
             : ZERO_DECIMAL;
-        const quoteBalance = tonicQuoteBalance
-            ? nativeToUi(new Decimal(tonicQuoteBalance[1]), quoteTokenConfig.decimals)
+        const tonicQuoteBalance = tonicNativeQuoteBalance
+            ? nativeToUi(new Decimal(tonicNativeQuoteBalance[1]), quoteTokenConfig.decimals)
             : ZERO_DECIMAL;
 
         // 1. Redeem base & quote ft from tonic
         const redeemFromDexPayload: NearTransactionPayload = { receiverId: botContractId, actions: [] };
-        if (baseBalance.gt(ZERO_DECIMAL)) {
-            console.log(`Redeem ${baseBalance} ${baseTokenConfig.symbol} from dex`);
-            redeemFromDexPayload.actions.push(redeemFromTonicAction(baseTokenConfig.symbol, baseBalance));
+        if (tonicBaseBalance.gt(ZERO_DECIMAL)) {
+            console.log(`Redeem ${tonicBaseBalance} ${baseTokenConfig.symbol} from dex`);
+            redeemFromDexPayload.actions.push(redeemFromTonicAction(baseTokenConfig.symbol, tonicBaseBalance));
         }
-        if (quoteBalance.gt(ZERO_DECIMAL)) {
-            console.log(`Redeem ${quoteBalance} ${quoteTokenConfig.symbol} from dex`);
-            redeemFromDexPayload.actions.push(redeemFromTonicAction(quoteTokenConfig.symbol, quoteBalance));
+        if (tonicQuoteBalance.gt(ZERO_DECIMAL)) {
+            console.log(`Redeem ${tonicQuoteBalance} ${quoteTokenConfig.symbol} from dex`);
+            redeemFromDexPayload.actions.push(redeemFromTonicAction(quoteTokenConfig.symbol, tonicQuoteBalance));
         }
         if (redeemFromDexPayload.actions.length > 0) {
             payloads.push(redeemFromDexPayload);
         }
 
-        // 2. Register wallet in base ft (if needed)
-        // 3. Redeem base ft from bot (if needed and base not NEAR)
-        if (baseTokenConfig.symbol != 'NEAR') {
-            const botBaseBalance = await getNearTokenBalance(baseTokenConfig.symbol, botContractId).then((res) =>
-                res.add(baseBalance),
-            );
-            if (botBaseBalance.gt(ZERO_DECIMAL)) {
+        const botInfo = await NearBot.load(params.botIndex, params.contractId, params.networkId);
+
+        const botInfoBaseTokenAccountId = baseTokenConfig.symbol == 'NEAR' ? 'near.near' : baseTokenConfig.accountId;
+        const botInfoQuoteTokenAccountId = quoteTokenConfig.symbol == 'NEAR' ? 'near.near' : quoteTokenConfig.accountId;
+        const botBaseBalance = botInfo.balances[botInfoBaseTokenAccountId]
+            ? nativeToUi(botInfo.balances[botInfoBaseTokenAccountId], baseTokenConfig.decimals)
+            : ZERO_DECIMAL;
+        const botQuoteBalance = botInfo.balances[botInfoQuoteTokenAccountId]
+            ? nativeToUi(botInfo.balances[botInfoQuoteTokenAccountId], quoteTokenConfig.decimals)
+            : ZERO_DECIMAL;
+
+        const baseBalance = botBaseBalance.add(tonicBaseBalance);
+        const quoteBalance = botQuoteBalance.add(tonicQuoteBalance);
+
+        // 2. Redeem base ft from bot
+        if (baseBalance.gt(ZERO_DECIMAL)) {
+            if (baseTokenConfig.symbol != 'NEAR') {
                 const storageBalance = await nearViewFunction(
                     'storage_balance_of',
                     {
@@ -481,52 +488,47 @@ export class TonicBot {
                         ],
                     });
                 }
-
-                console.log(`Redeem ${botBaseBalance} ${baseTokenConfig.symbol} from bot`);
-                payloads.push({
-                    receiverId: params.contractId,
-                    actions: [
-                        functionCall(
-                            'withdraw',
-                            {
-                                bot_index: params.botIndex,
-                                token_id: baseTokenConfig.accountId,
-                                withdraw_amount: uiToNative(botBaseBalance, baseTokenConfig.decimals).toFixed(),
-                            },
-                            DEFAULT_GAS,
-                            ZERO_BN,
-                        ),
-                    ],
-                });
             }
+
+            console.log(`Redeem ${baseBalance} ${baseTokenConfig.symbol} from bot`);
+            payloads.push({
+                receiverId: params.contractId,
+                actions: [
+                    functionCall(
+                        'withdraw',
+                        {
+                            bot_index: params.botIndex,
+                            token_id: botInfoBaseTokenAccountId,
+                            withdraw_amount: uiToNative(baseBalance, baseTokenConfig.decimals).toFixed(),
+                        },
+                        DEFAULT_GAS,
+                        ZERO_BN,
+                    ),
+                ],
+            });
         }
 
-        // 4. Redeem quote ft from bot (if needed and quote not NEAR)
-        if (quoteTokenConfig.symbol != 'NEAR') {
-            const botQuoteBalance = await getNearTokenBalance(quoteTokenConfig.symbol, botContractId).then((res) =>
-                res.add(quoteBalance),
-            );
-            if (botQuoteBalance.gt(ZERO_DECIMAL)) {
-                console.log(`Redeem ${botQuoteBalance} ${quoteTokenConfig.symbol} from bot`);
-                payloads.push({
-                    receiverId: params.contractId,
-                    actions: [
-                        functionCall(
-                            'withdraw',
-                            {
-                                bot_index: params.botIndex,
-                                token_id: quoteTokenConfig.accountId,
-                                withdraw_amount: uiToNative(botQuoteBalance, quoteTokenConfig.decimals).toFixed(),
-                            },
-                            DEFAULT_GAS,
-                            ZERO_BN,
-                        ),
-                    ],
-                });
-            }
+        // 3. Redeem quote ft from bot
+        if (quoteBalance.gt(ZERO_DECIMAL)) {
+            console.log(`Redeem ${quoteBalance} ${quoteTokenConfig.symbol} from bot`);
+            payloads.push({
+                receiverId: params.contractId,
+                actions: [
+                    functionCall(
+                        'withdraw',
+                        {
+                            bot_index: params.botIndex,
+                            token_id: botInfoQuoteTokenAccountId,
+                            withdraw_amount: uiToNative(quoteBalance, quoteTokenConfig.decimals).toFixed(),
+                        },
+                        DEFAULT_GAS,
+                        ZERO_BN,
+                    ),
+                ],
+            });
         }
 
-        // 5. Close bot
+        // 4. Close bot
         console.log(`Close bot ${botContractId} & redeem ${BOT_CONTRACT_STORAGE_NEAR} NEAR from bot contract`);
         payloads.push({
             receiverId: params.contractId,

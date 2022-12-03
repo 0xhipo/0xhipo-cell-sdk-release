@@ -23,6 +23,7 @@ import {
     botTypeStrToEnum,
     nativeToUi,
     nearViewFunction,
+    uiToNative,
 } from '../../util';
 import Decimal from 'decimal.js';
 import { TonicBot } from './TonicBot';
@@ -38,6 +39,12 @@ export class NearBot {
     ): Promise<NearBotAccount> {
         const botContractId = `${botIndex}.${contractId}`;
         const bot = await nearViewFunction('get_bot_info', {}, botContractId, networkId);
+
+        const balances = {};
+        for (const i of Object.entries(bot['balances'])) {
+            balances[i[0]] = new Decimal(i[1] as Decimal.Value);
+        }
+
         return {
             contractId: botContractId,
             owner: bot['bot_owner'],
@@ -51,6 +58,9 @@ export class NearBot {
             upperPrice: nativeToUi(new Decimal(bot['upper_price']), 6),
             gridNumber: new Decimal(bot['grid_num']),
             leverage: nativeToUi(new Decimal(bot['leverage']), 2),
+            referer: bot['referer'],
+            perpFeeDiscount: new Decimal(bot['perf_fee_discount']),
+            balances,
         };
     }
 
@@ -170,22 +180,17 @@ export class NearBot {
             actions: [functionCall('set_delegate', { delegate: params.delegateAccountId }, DEFAULT_GAS, ZERO_BN)],
         };
     }
-}
 
-export class NearWhitelist {
-    static load(contractId: string): Promise<string[]> {
-        return nearViewFunction('get_white_list', {}, contractId);
-    }
-
-    static add(whiteList: string[], contractId: string): NearTransactionPayload {
+    /*
+     * Add referer & discount in cell config, discount 0.1 as 10%
+     */
+    static addReferer(refererAccount: string, discount: Decimal, contractId: string): NearTransactionPayload {
         return {
             receiverId: contractId,
             actions: [
                 functionCall(
-                    'add_white_list_members',
-                    {
-                        members: whiteList,
-                    },
+                    'add_referer',
+                    { referer_account: refererAccount, discount: uiToNative(discount, 2).toNumber() },
                     DEFAULT_GAS,
                     ZERO_BN,
                 ),
@@ -193,20 +198,22 @@ export class NearWhitelist {
         };
     }
 
-    static remove(whiteList: string[], contractId: string): NearTransactionPayload {
+    /*
+     * Set referer to bot
+     */
+    static setReferer(refererAccount: string, botIndex: number, contractId: string): NearTransactionPayload {
         return {
             receiverId: contractId,
             actions: [
-                functionCall(
-                    'remove_white_list_members',
-                    {
-                        members: whiteList,
-                    },
-                    DEFAULT_GAS,
-                    ZERO_BN,
-                ),
+                functionCall('set_bot_referer', { bot_index: botIndex, referer: refererAccount }, DEFAULT_GAS, ZERO_BN),
             ],
         };
+    }
+
+    static getRefererDiscount(refererAccount: string, contractId: string): Promise<Decimal> {
+        return nearViewFunction('get_referer_discount', { referer_account: refererAccount }, contractId).then((res) =>
+            nativeToUi(new Decimal(res), 2),
+        );
     }
 }
 

@@ -154,7 +154,7 @@ export class Numberu128 extends BN {
 }
 
 export function decimalToBN(n: Decimal): BN {
-    return new BN(n.toString());
+    return new BN(n.toFixed());
 }
 
 export function bnToDecimal(n: BN) {
