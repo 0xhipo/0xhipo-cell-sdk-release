@@ -6,7 +6,7 @@ export const ONE_TGAS = new BN(Math.pow(10, 12));
 export const DEFAULT_GAS = ONE_TGAS.muln(300);
 export const ZERO_BN = new BN(0);
 
-export const BOT_CONTRACT_STORAGE_NEAR = 4;
+export const BOT_CONTRACT_STORAGE_NEAR = 5;
 
 export const NEAR_ENV: NearEnvConfig[] = [
     {

@@ -7,6 +7,8 @@ import {
     RefPoolConfig,
     SerumMarketConfig,
     SolanaTokenConfig,
+    SpinPerpMarketConfig,
+    SpinSpotMarketConfig,
     TonicMarketConfig,
     ZetaAssetConfig,
     ZetaFutureMarketConfig,
@@ -20,6 +22,8 @@ import {
     SERUM_MARKETS,
     MANGO_SPOT_MARKETS,
     MANGO_PERP_MARKETS,
+    SPIN_SPOT_MARKETS,
+    SPIN_PERP_MARKETS,
 } from '../constant';
 import { SOLANA_TOKENS, ZETA_ASSETS_CONFIG, ZETA_FUTURE_MARKETS, ZETA_PERP_MARKETS } from '../constant';
 import { PublicKey } from '@solana/web3.js';
@@ -74,4 +78,12 @@ export function getMangoSpotMarketConfig(marketKey: PublicKey): MangoSpotMarketC
 
 export function getMangoPerpMarketConfig(marketKey: PublicKey): MangoPerpMarketConfig | undefined {
     return MANGO_PERP_MARKETS.find((i) => i.publicKey.equals(marketKey));
+}
+
+export function getSpinSpotMarketConfig(marketId: string): SpinSpotMarketConfig | undefined {
+    return SPIN_SPOT_MARKETS.find((i) => i.marketId == marketId);
+}
+
+export function getSpinPerpMarketConfig(marketId: string): SpinPerpMarketConfig | undefined {
+    return SPIN_PERP_MARKETS.find((i) => i.marketId == marketId);
 }

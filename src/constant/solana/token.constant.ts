@@ -19,6 +19,7 @@ export const PYTH_PRICE_KEY = {
     GMT: new PublicKey('DZYZkJcFJThN9nZy4nK3hrHra1LaWeiyoZ9SMdLFEFpY'),
     ADA: new PublicKey('3pyn4svBbxJ9Wnn3RVeafyLWfzie6yC5eTig2S62v9SC'),
     stSOL: new PublicKey('Bt1hEbY62aMriY1SyQqbeZbm8VmSbQVGBFzSzMuVNWzN'),
+    ARB: PublicKey.default,
 };
 
 export const SOLANA_TOKENS: SolanaTokenConfig[] = [
@@ -140,5 +141,12 @@ export const SOLANA_TOKENS: SolanaTokenConfig[] = [
         decimals: 9,
         tokenIndex: 16,
         pythPriceKey: PYTH_PRICE_KEY.stSOL,
+    },
+    {
+        name: 'ARB',
+        mintKey: new PublicKey('9tzZzEHsKnwFL1A3DyFJwj36KnZj3gZ7g4srWp9YTEoh'),
+        decimals: 6,
+        tokenIndex: 17,
+        pythPriceKey: PYTH_PRICE_KEY.ARB,
     },
 ];

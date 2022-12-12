@@ -1,6 +1,6 @@
 {
     "name": "0xhipo-cell-sdk-release",
-    "version": "2.3.29",
+    "version": "2.4.2",
     "description": "",
     "main": "dist/index.js",
     "scripts": {

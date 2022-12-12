@@ -68,11 +68,19 @@ export const TONIC_MARKETS: TonicMarketConfig[] = [
         orderQuantityDecimals: 2,
     },
     {
-        name: 'AURORA/USDC',
+        name: 'AURORA-1000/USDC',
         marketId: '7Ub1tFH9hUTcS3F4PbU7PPVmXx4u11nQnBPCF3tqJgkV',
         baseSymbol: 'AURORA',
         quoteSymbol: 'USDC',
         orderPriceDecimals: 3,
+        orderQuantityDecimals: 2,
+    },
+    {
+        name: 'AURORA/USDC',
+        marketId: 'Fef7VNamGSiujh9AL88FyF9MgN1M7vJvX9CtEdSmYGoP',
+        baseSymbol: 'AURORA',
+        quoteSymbol: 'USDC',
+        orderPriceDecimals: 4,
         orderQuantityDecimals: 2,
     },
 ];

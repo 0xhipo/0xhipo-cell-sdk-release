@@ -30,6 +30,8 @@ import { TonicBot } from './TonicBot';
 import { functionCall } from 'near-api-js/lib/transaction';
 import { DEFAULT_GAS, ZERO_BN } from '../../constant';
 import { RefBot } from './RefBot';
+import { SpinSpotBot } from './SpinSpotBot';
+import { SpinPerpBot } from './SpinPerpBot';
 
 export class NearBot {
     static async load(
@@ -82,6 +84,10 @@ export class NearBot {
                 return TonicBot.create(params);
             // case Protocol.Ref:
             //     return RefBot.create(params);
+            case Protocol.SpinSpot:
+                return SpinSpotBot.create(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.create(params);
             default:
                 throw `Create near bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -100,6 +106,8 @@ export class NearBot {
                 return TonicBot.getBotInfo(params);
             case Protocol.Ref:
                 return RefBot.getBotInfo(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.getBotInfo(params);
             default:
                 throw `Get near bot info error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -111,6 +119,8 @@ export class NearBot {
                 return TonicBot.getOpenOrders(params);
             case Protocol.Ref:
                 return RefBot.getOpenOrders(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.getOpenOrders(params);
             default:
                 throw `Cancel near bot open orders error: unsupported protocol ${botProtocolEnumToStr(
                     params.protocol,
@@ -131,6 +141,8 @@ export class NearBot {
                 return TonicBot.placeOrder(params);
             case Protocol.Ref:
                 return RefBot.placeOrder(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.placeOrder(params);
             default:
                 throw `Place near bot order info error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -142,6 +154,8 @@ export class NearBot {
                 return TonicBot.cancelOrder(params);
             case Protocol.Ref:
                 return RefBot.cancelOrder(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.cancelOrder(params);
             default:
                 throw `Cancel near bot order error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -151,6 +165,8 @@ export class NearBot {
         switch (params.protocol) {
             case Protocol.Tonic:
                 return TonicBot.cancelAllOrders(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.cancelAllOrders(params);
             default:
                 throw `Cancel near bot all orders error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -160,6 +176,8 @@ export class NearBot {
         switch (params.protocol) {
             case Protocol.Tonic:
                 return TonicBot.closeMarket(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.closeMarket(params);
             default:
                 throw `Close near bot market error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }
@@ -169,6 +187,8 @@ export class NearBot {
         switch (params.protocol) {
             case Protocol.Tonic:
                 return TonicBot.close(params);
+            case Protocol.SpinPerp:
+                return SpinPerpBot.close(params);
             default:
                 throw `Cancel near bot error: unsupported protocol ${botProtocolEnumToStr(params.protocol)}`;
         }

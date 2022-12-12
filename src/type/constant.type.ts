@@ -169,3 +169,22 @@ export enum SolanaEnvName {
     PROD = 'PROD',
     PROD_V2 = 'PROD_V2',
 }
+
+export interface SpinSpotMarketConfig {
+    name: string;
+    marketId: string;
+    baseSymbol: string;
+    quoteSymbol: string;
+    orderPriceDecimals: number;
+    orderQuantityDecimals: number;
+}
+
+export interface SpinPerpMarketConfig {
+    name: string;
+    marketId: string;
+    leverage: 10;
+    baseSymbol: string;
+    quoteSymbol: string;
+    orderPriceDecimals: number;
+    orderQuantityDecimals: number;
+}

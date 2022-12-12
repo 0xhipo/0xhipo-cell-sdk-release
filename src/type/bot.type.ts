@@ -24,6 +24,8 @@ export enum Protocol {
     MangoSpot = 1,
     ZetaFuture = 2,
     Tonic = 3,
+    SpinSpot = 4,
+    SpinPerp = 5,
     Ref = 6,
     ZetaPerp = 7,
     Serum = 8,

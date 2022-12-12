@@ -3,17 +3,18 @@ import { CancelNearOrderParams, NearBot, NearNetworkId, nearSendTransactionPaylo
 import Decimal from 'decimal.js';
 
 async function cancelOrderExample() {
-    const bot = await NearBot.load(nearBotIndex, nearContractId, NearNetworkId.testnet);
+    const bot = await NearBot.load(nearBotIndex, nearContractId, NearNetworkId.mainnet);
     const params: CancelNearOrderParams = {
         protocol: bot.protocol,
         market: bot.market,
-        orderId: 'ref.fakes.testnet|usdt.fakes.testnet|2000#124',
+        orderId: '378564',
         botIndex: nearBotIndex,
         contractId: nearContractId,
-        amount: new Decimal(1),
-        side: OrderSide.Bid,
+        // Ref Only params
+        // amount: new Decimal(1),
+        // side: OrderSide.Bid,
     };
     const payload = await NearBot.cancelOrder(params);
-    await nearSendTransactionPayload(payload, nearAccountId, nearAccountPrivateKey, NearNetworkId.testnet);
+    await nearSendTransactionPayload(payload, nearAccountId, nearAccountPrivateKey, NearNetworkId.mainnet);
 }
 cancelOrderExample();

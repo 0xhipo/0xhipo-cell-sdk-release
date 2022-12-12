@@ -18,4 +18,5 @@ export const COIN_GECKO_TOKEN_MAP = {
     NEAR: 'near',
     USDC: 'usd-coin',
     stSOL: 'lido-staked-sol',
+    ARB: 'arb-protocol'
 };

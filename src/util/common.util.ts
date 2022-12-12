@@ -61,6 +61,10 @@ export function botProtocolEnumToStr(protocol: Protocol): string {
             return 'Ref';
         case Protocol.Serum:
             return 'Serum';
+        case Protocol.SpinSpot:
+            return 'SpinSpot';
+        case Protocol.SpinPerp:
+            return 'SpinPerp';
         default:
             throw `Invalid bot protocol type enum ${protocol}`;
     }
@@ -80,6 +84,10 @@ export function botProtocolStrToEnum(protocolType: string): Protocol {
             return Protocol.Ref;
         case 'Serum':
             return Protocol.Serum;
+        case 'SpinSpot':
+            return Protocol.SpinSpot;
+        case 'SpinPerp':
+            return Protocol.SpinPerp;
         default:
             throw `Invalid bot protocol type ${protocolType}`;
     }
